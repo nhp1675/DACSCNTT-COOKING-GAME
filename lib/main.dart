@@ -7,6 +7,8 @@ import 'package:audioplayers/audioplayers.dart';
 import 'firebase_options.dart'; 
 import 'dart:async';
 import 'dart:math';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -59,30 +61,85 @@ class _AuthScreenState extends State<AuthScreen> {
     }
   }
 
-  @override
+  // 🌟 MỚI: Hàm xử lý Đăng nhập bằng Google
+  Future<void> _signInWithGoogle() async {
+    try {
+      if (kIsWeb) {
+        // Cách đăng nhập tối ưu và không bị lỗi dành riêng cho Web (Netlify)
+        GoogleAuthProvider googleProvider = GoogleAuthProvider();
+        await FirebaseAuth.instance.signInWithPopup(googleProvider);
+      } else {
+        // Cách đăng nhập dành cho Android/iOS (phòng khi sau này bạn làm app)
+        final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
+        if (googleUser == null) return;
+
+        final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+        final OAuthCredential credential = GoogleAuthProvider.credential(
+          accessToken: googleAuth.accessToken,
+          idToken: googleAuth.idToken,
+        );
+
+        await FirebaseAuth.instance.signInWithCredential(credential);
+      }
+      
+      if (mounted) {
+        Navigator.pushReplacement(context, MaterialPageRoute(builder: (c) => const MainMenu()));
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Lỗi Google Login: $e"), backgroundColor: Colors.red));
+    }
+  }  @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(gradient: LinearGradient(colors: [Color(0xFF66BB6A), Color(0xFFFFCA28)])),
         child: Center(
-          child: Card(
-            margin: const EdgeInsets.all(20),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(mainAxisSize: MainAxisSize.min, children: [
-                const Text('🐾 HAPPY PET SHOP', style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: Colors.green)),
-                TextField(controller: _email, decoration: const InputDecoration(labelText: 'Email')),
-                TextField(controller: _pass, obscureText: true, decoration: const InputDecoration(labelText: 'Password')),
-                const SizedBox(height: 20),
-                ElevatedButton.icon(
-                  onPressed: _auth, 
-                  icon: Icon(isLogin ? Icons.login : Icons.person_add),
-                  label: Text(isLogin ? 'MỞ CỬA TIỆM' : 'ĐĂNG KÝ'),
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.green, minimumSize: const Size(200, 45)), 
-                ),
-                TextButton(onPressed: () => setState(() => isLogin = !isLogin), child: Text(isLogin ? 'Chưa có tài khoản? Đăng ký' : 'Đã có tài khoản? Đăng nhập'))
-              ]),
+          child: SingleChildScrollView( // Chống tràn màn hình
+            child: Card(
+              margin: const EdgeInsets.all(20),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(mainAxisSize: MainAxisSize.min, children: [
+                  const Text('🐾 NHÀ HÀNG THÚ CƯNG', style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: Colors.green)),
+                  TextField(controller: _email, decoration: const InputDecoration(labelText: 'Email')),
+                  TextField(controller: _pass, obscureText: true, decoration: const InputDecoration(labelText: 'Password')),
+                  const SizedBox(height: 20),
+                  
+                  // NÚT ĐĂNG NHẬP BẰNG EMAIL
+                  ElevatedButton.icon(
+                    onPressed: _auth, 
+                    icon: Icon(isLogin ? Icons.login : Icons.person_add, color: Colors.white),
+                    label: Text(isLogin ? 'MỞ CỬA TIỆM' : 'ĐĂNG KÝ', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                    style: ElevatedButton.styleFrom(backgroundColor: Colors.green, minimumSize: const Size(double.infinity, 45)), 
+                  ),
+                  
+                  TextButton(
+                    onPressed: () => setState(() => isLogin = !isLogin), 
+                    child: Text(isLogin ? 'Chưa có tài khoản? Đăng ký' : 'Đã có tài khoản? Đăng nhập')
+                  ),
+
+                  const Divider(thickness: 1, color: Colors.grey),
+                  const Text("HOẶC", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 10),
+
+                  // 🌟 MỚI: NÚT ĐĂNG NHẬP BẰNG GOOGLE
+                  OutlinedButton.icon(
+                    onPressed: _signInWithGoogle,
+                    icon: Image.network(
+                      'https://upload.wikimedia.org/wikipedia/commons/archive/c/c1/20230822192910%21Google_%22G%22_logo.svg',
+                      height: 24,
+                    ),
+                    label: const Text('Đăng nhập với Google', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold, fontSize: 16)),
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: Colors.grey),
+                      minimumSize: const Size(double.infinity, 45),
+                      backgroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))
+                    ),
+                  ),
+                ]),
+              ),
             ),
           ),
         ),
@@ -102,7 +159,8 @@ class _MainMenuState extends State<MainMenu> {
   int coins = 0;
   int stations = 2;
   int burnLevel = 0;
-  int maxHearts = 3; // Mặc định có 3 tim
+  int maxHearts = 3; 
+  int unlockedIngredients = 0;
 
   @override
   void initState() {
@@ -111,41 +169,37 @@ class _MainMenuState extends State<MainMenu> {
   }
 
   void _loadData() async {
-  // 1. Lấy thông tin user hiện tại
-  final u = FirebaseAuth.instance.currentUser;
-  
-  // 2. Kiểm tra an toàn: Nếu có user thì mới gọi lên Firebase
-  if (u != null) {
-    try {
-      var doc = await FirebaseFirestore.instance.collection('users').doc(u.uid).get();
-      
-      // 3. Nếu dữ liệu tồn tại, gán vào các biến
-      if (doc.exists) {
-        setState(() {
-          // Dùng doc.get() hoặc doc.data() để tránh lỗi trên các phiên bản Firebase mới
-          coins = doc.data()?['coins'] ?? 0;
-          stations = doc.data()?['stations'] ?? 2;
-          burnLevel = doc.data()?['burnLevel'] ?? 0;
-          maxHearts = doc.data()?['maxHearts'] ?? 3;
-        });
+    final u = FirebaseAuth.instance.currentUser;
+    if (u != null) {
+      try {
+        var doc = await FirebaseFirestore.instance.collection('users').doc(u.uid).get();
+        if (doc.exists) {
+          setState(() {
+            coins = doc.data()?['coins'] ?? 0;
+            stations = doc.data()?['stations'] ?? 2;
+            burnLevel = doc.data()?['burnLevel'] ?? 0;
+            maxHearts = doc.data()?['maxHearts'] ?? 3;
+            unlockedIngredients = doc.data()?['unlockedIngredients'] ?? 0; 
+          });
+        }
+      } catch (e) {
+        debugPrint("Lỗi tải dữ liệu: $e");
       }
-    } catch (e) {
-      debugPrint("Lỗi tải dữ liệu: $e");
     }
   }
-}  @override
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Center(
         child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-          const Text('🐶🐱🐰', style: TextStyle(fontSize: 60)),
-          const Text('HAPPY PET SHOP', style: TextStyle(fontSize: 32, fontWeight: FontWeight.w900, color: Colors.green)),
+          const Text('🐾 NHÀ HÀNG THÚ CƯNG 🐾', style: TextStyle(fontSize: 32, fontWeight: FontWeight.w900, color: Colors.green)),
           const SizedBox(height: 10),
           Text('💰 Tiền của bạn: $coins \$', style: const TextStyle(fontSize: 20, color: Colors.orange, fontWeight: FontWeight.bold)),
           const SizedBox(height: 30),
-          _btn(context, 'BẮT ĐẦU CHĂM SÓC', Icons.play_arrow, Colors.green, LevelSelectScreen(stations: stations, burnLevel: burnLevel, maxHearts: maxHearts)),
+          _btn(context, 'BẮT ĐẦU CHĂM SÓC', Icons.play_arrow, Colors.green, LevelSelectScreen(stations: stations, burnLevel: burnLevel, maxHearts: maxHearts, unlockedIngredients: unlockedIngredients)),
           const SizedBox(height: 15),
-          _btn(context, 'CỬA HÀNG NÂNG CẤP', Icons.storefront, Colors.blueAccent, ShopScreen(coins: coins, stations: stations, burnLevel: burnLevel, maxHearts: maxHearts, onUpdate: _loadData)),
+          _btn(context, 'CỬA HÀNG NÂNG CẤP', Icons.storefront, Colors.blueAccent, ShopScreen(coins: coins, stations: stations, burnLevel: burnLevel, maxHearts: maxHearts, unlockedIngredients: unlockedIngredients, onUpdate: _loadData)),
           const SizedBox(height: 15),
           _btn(context, 'BẢNG XẾP HẠNG', Icons.emoji_events, Colors.amber, const LeaderboardScreen()),
           const SizedBox(height: 30),
@@ -170,9 +224,9 @@ class _MainMenuState extends State<MainMenu> {
 
 // --- CỬA HÀNG NÂNG CẤP (SHOP) ---
 class ShopScreen extends StatelessWidget {
-  final int coins, stations, burnLevel, maxHearts;
+  final int coins, stations, burnLevel, maxHearts, unlockedIngredients;
   final VoidCallback onUpdate;
-  const ShopScreen({super.key, required this.coins, required this.stations, required this.burnLevel, required this.maxHearts, required this.onUpdate});
+  const ShopScreen({super.key, required this.coins, required this.stations, required this.burnLevel, required this.maxHearts, required this.unlockedIngredients, required this.onUpdate});
 
   void _buy(BuildContext context, String field, int cost, int currentValue, int maxValue) async {
     if (currentValue >= maxValue) {
@@ -202,9 +256,9 @@ class ShopScreen extends StatelessWidget {
       ),
       body: ListView(padding: const EdgeInsets.all(20), children: [
         _shopCard(context, '📦 Thêm Bàn Chuẩn Bị', 'Giúp phục vụ nhiều khách cùng lúc.', stations, 4, 1000, () => _buy(context, 'stations', 1000, stations, 4)),
-        _shopCard(context, '⏳ Tủ Lạnh Mini', 'Giúp đồ ăn/sữa lâu hỏng hơn.', burnLevel, 5, 800, () => _buy(context, 'burnLevel', 800, burnLevel, 5)),
-        // ITEM MỚI: MUA THÊM TIM
+        _shopCard(context, '⏳ Tủ Lạnh Mini', 'Giúp đồ ăn lâu hỏng hơn.', burnLevel, 5, 800, () => _buy(context, 'burnLevel', 800, burnLevel, 5)),
         _shopCard(context, '❤️ Tăng Tim Tối Đa', 'Tăng số lần được phép mắc lỗi.', maxHearts, 6, 1500, () => _buy(context, 'maxHearts', 1500, maxHearts, 6)),
+        _shopCard(context, '🛒 Thực Đơn Phong Phú', 'Mở khóa thêm đùi gà, tôm, sữa, trái cây...', unlockedIngredients, 4, 1200, () => _buy(context, 'unlockedIngredients', 1200, unlockedIngredients, 4)),
       ]),
     );
   }
@@ -229,8 +283,8 @@ class ShopScreen extends StatelessWidget {
 
 // --- CHỌN CẤP ĐỘ ---
 class LevelSelectScreen extends StatelessWidget {
-  final int stations, burnLevel, maxHearts;
-  const LevelSelectScreen({super.key, required this.stations, required this.burnLevel, required this.maxHearts});
+  final int stations, burnLevel, maxHearts, unlockedIngredients;
+  const LevelSelectScreen({super.key, required this.stations, required this.burnLevel, required this.maxHearts, required this.unlockedIngredients});
 
   @override
   Widget build(BuildContext context) {
@@ -244,7 +298,7 @@ class LevelSelectScreen extends StatelessWidget {
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, crossAxisSpacing: 15, mainAxisSpacing: 15),
         itemCount: 6,
         itemBuilder: (ctx, i) => InkWell(
-          onTap: () => Navigator.push(ctx, MaterialPageRoute(builder: (c) => GameScreen(level: i + 1, stations: stations, burnLevel: burnLevel, maxHearts: maxHearts))),
+          onTap: () => Navigator.push(ctx, MaterialPageRoute(builder: (c) => GameScreen(level: i + 1, stations: stations, burnLevel: burnLevel, maxHearts: maxHearts, unlockedIngredients: unlockedIngredients))),
           child: Container(
             decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), border: Border.all(color: Colors.greenAccent, width: 3)),
             child: Center(child: Text('LEVEL ${i + 1}', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.green))),
@@ -258,9 +312,9 @@ class LevelSelectScreen extends StatelessWidget {
 // --- MODELS TỐI ƯU ---
 class PetClient {
   String itemWanted;
-  String avatar;
+  String avatarAssetPath; 
   double patience = 1.0;
-  PetClient(this.itemWanted, this.avatar);
+  PetClient(this.itemWanted, this.avatarAssetPath);
 }
 
 class PetItem {
@@ -276,27 +330,41 @@ class GameScreen extends StatefulWidget {
   final int stations;
   final int burnLevel;
   final int maxHearts;
-  const GameScreen({super.key, required this.level, required this.stations, required this.burnLevel, required this.maxHearts});
+  final int unlockedIngredients;
+  const GameScreen({super.key, required this.level, required this.stations, required this.burnLevel, required this.maxHearts, required this.unlockedIngredients});
   @override
   State<GameScreen> createState() => _GameScreenState();
 }
 
 class _GameScreenState extends State<GameScreen> {
   int score = 0;
-  late int hearts; // Chuyển thành late để nhận giá trị từ widget.maxHearts
+  late int hearts; 
   List<PetClient?> pets = [null, null, null];
   late List<PetItem?> prepStations; 
   Timer? timer;
   final AudioPlayer _audio = AudioPlayer();
 
-  final List<String> supplies = ['🦴', '🐟', '🥕', '🌻', '🥩', '🥦']; 
-  final List<String> petAvatars = ['🐶', '🐱', '🐰', '🐹', '🐦', '🐢', '🦎', '🐠', '🦜', '🦔'];
+  final List<String> allSupplies = ['🦴', '🐟', '🥕', '🌻', '🥩', '🥦', '🍗', '🥛', '🍤', '🍎']; 
+  late List<String> activeMenu; 
+  
+  final List<String> petAvatars = [
+    'assets/images/cat.png',
+    'assets/images/dog.png',
+    'assets/images/elephant.png',
+    'assets/images/fox.png',
+    'assets/images/koala.png',
+    'assets/images/zebra.png',
+  ];
 
   @override
   void initState() {
     super.initState();
-    hearts = widget.maxHearts; // Gán số tim bằng số tim tối đa đã nâng cấp
+    hearts = widget.maxHearts; 
     prepStations = List.filled(widget.stations, null); 
+    
+    int menuSize = min(widget.level + 2 + widget.unlockedIngredients, allSupplies.length);
+    activeMenu = allSupplies.sublist(0, menuSize);
+
     timer = Timer.periodic(const Duration(milliseconds: 100), (t) => _gameLoop());
   }
 
@@ -316,7 +384,7 @@ class _GameScreenState extends State<GameScreen> {
           pets[i] = null; hearts--; _play('ohno.mp3'); HapticFeedback.vibrate(); needsUpdate = true;
         } else { needsUpdate = true; }
       } else if (Random().nextInt(40) == 1) {
-        pets[i] = PetClient(supplies[Random().nextInt(min(widget.level + 2, supplies.length))], petAvatars[Random().nextInt(petAvatars.length)]);
+        pets[i] = PetClient(activeMenu[Random().nextInt(activeMenu.length)], petAvatars[Random().nextInt(petAvatars.length)]);
         _play('bell.mp3'); needsUpdate = true;
       }
     }
@@ -354,7 +422,7 @@ class _GameScreenState extends State<GameScreen> {
     }
     if (mounted) {
       showDialog(context: context, barrierDismissible: false, builder: (c) => AlertDialog(
-        title: const Text('CÁC BÉ DỖI RỒI! 😿'),
+        title: const Text('CÁC BÉ DỖI RỒI!'), 
         content: Text('Bạn đã kiếm được $score \$!'),
         actions: [
           TextButton.icon(
@@ -374,36 +442,84 @@ class _GameScreenState extends State<GameScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('SCORE: $score | ${"❤️" * (hearts > 0 ? hearts : 0)}'), backgroundColor: Colors.green,
+        title: Text('DOANH THU: $score \$ | ${"❤️" * (hearts > 0 ? hearts : 0)}', style: const TextStyle(color: Colors.amber, fontWeight: FontWeight.bold)), 
+        backgroundColor: const Color(0xFF1A1A1A), 
+        iconTheme: const IconThemeData(color: Colors.amber),
         leading: IconButton(icon: const Icon(Icons.arrow_back_ios_new), onPressed: () => Navigator.pop(context)),
       ),
-      body: Column(children: [
-        Container(
-          height: 140, padding: const EdgeInsets.symmetric(vertical: 10),
-          child: Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: List.generate(3, (i) => _buildPetClient(i))),
-        ),
-        
-        DragTarget<PetItem>(
-          onAccept: (item) { setState(() { hearts--; _play('ohno.mp3'); }); HapticFeedback.heavyImpact(); }, 
-          builder: (ctx, _, __) => Container(
-            width: 70, height: 70, decoration: BoxDecoration(color: Colors.grey[400], borderRadius: BorderRadius.circular(10)),
-            child: const Center(child: Text('🗑️\nBỎ ĐỒ', textAlign: TextAlign.center, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white))),
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: RadialGradient(
+            colors: [Color(0xFF4A2F1D), Color(0xFF140D07)], 
+            radius: 1.2,
+            center: Alignment.center,
           ),
         ),
-        
-        const Spacer(),
-        Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: List.generate(widget.stations, (i) => _buildPrepStation(i))),
-        const SizedBox(height: 20),
-        Container(
-          padding: const EdgeInsets.all(15), decoration: const BoxDecoration(color: Colors.white, borderRadius: BorderRadius.vertical(top: Radius.circular(30))),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly, 
-            children: supplies.sublist(0, min(widget.level + 2, supplies.length)).map((m) => Draggable<String>(
-              data: m, feedback: Material(color: Colors.transparent, child: Text(m, style: const TextStyle(fontSize: 50))), child: Text(m, style: const TextStyle(fontSize: 45))
-            )).toList()
-          ),
+        child: SafeArea(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center, 
+            children: [
+              const SizedBox(height: 20),
+              
+              // KHU VỰC KHÁCH HÀNG (VIP LOUNGE)
+              Container(
+                height: 140, padding: const EdgeInsets.symmetric(horizontal: 10),
+                child: Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: List.generate(3, (i) => _buildPetClient(i))),
+              ),
+              
+              const SizedBox(height: 30), 
+              
+              // THÙNG RÁC
+              DragTarget<PetItem>(
+                onAccept: (item) { setState(() { hearts--; _play('ohno.mp3'); }); HapticFeedback.heavyImpact(); }, 
+                builder: (ctx, _, __) => Container(
+                  width: 60, height: 60, 
+                  decoration: BoxDecoration(
+                    color: Colors.black54, 
+                    borderRadius: BorderRadius.circular(30),
+                    border: Border.all(color: Colors.redAccent.withOpacity(0.5), width: 2),
+                    boxShadow: const [BoxShadow(color: Colors.black54, blurRadius: 8, offset: Offset(0, 4))],
+                  ),
+                  child: const Center(child: Text('🗑️', textAlign: TextAlign.center, style: TextStyle(fontSize: 24))),
+                ),
+              ),
+              
+              const SizedBox(height: 30), 
+              
+              // KHU VỰC CHẾ BIẾN (STATIONS)
+              Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: List.generate(widget.stations, (i) => _buildPrepStation(i))),
+              
+              const Spacer(), 
+              
+              // QUẦY THỨC ĂN (BUFFET COUNTER)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 20), 
+                decoration: const BoxDecoration(
+                  color: Color(0xFF1A1A1A), 
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+                  border: Border(top: BorderSide(color: Colors.amber, width: 3)),
+                  boxShadow: [BoxShadow(color: Colors.black, blurRadius: 15, offset: Offset(0, -5))],
+                ),
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  physics: const BouncingScrollPhysics(),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center, 
+                    children: activeMenu.map((m) => Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 15),
+                      child: Draggable<String>(
+                        data: m, 
+                        feedback: Material(color: Colors.transparent, child: Text(m, style: const TextStyle(fontSize: 60))), 
+                        child: Text(m, style: const TextStyle(fontSize: 45))
+                      ),
+                    )).toList()
+                  ),
+                ),
+              ),
+            ]),
         ),
-      ]),
+      ),
     );
   }
 
@@ -416,11 +532,24 @@ class _GameScreenState extends State<GameScreen> {
         } 
       }, 
       builder: (ctx, _, __) => Container(
-        width: 100, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(15), border: Border.all(color: Colors.greenAccent, width: 2)),
-        child: pet == null ? const Center(child: Text('Đợi...')) : Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-          Text(pet.avatar, style: const TextStyle(fontSize: 35)),
+        width: 100, 
+        decoration: BoxDecoration(
+          color: const Color(0xFFFDF5E6), 
+          borderRadius: BorderRadius.circular(15), 
+          border: Border.all(color: Colors.amber, width: 3),
+          boxShadow: const [BoxShadow(color: Colors.black45, blurRadius: 8, offset: Offset(2, 4))],
+        ),
+        child: pet == null ? const Center(child: Text('Đang đợi bàn...', style: TextStyle(color: Colors.grey, fontSize: 12, fontStyle: FontStyle.italic))) : Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+          Image.asset(pet.avatarAssetPath, height: 45, fit: BoxFit.contain), 
           Text(pet.itemWanted, style: const TextStyle(fontSize: 24)),
-          Padding(padding: const EdgeInsets.symmetric(horizontal: 10), child: LinearProgressIndicator(value: pet.patience, color: pet.patience > 0.3 ? Colors.green : Colors.red)),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10), 
+            child: LinearProgressIndicator(
+              value: pet.patience, 
+              backgroundColor: Colors.grey[300],
+              color: pet.patience > 0.3 ? Colors.green : Colors.red
+            )
+          ),
         ]),
       ),
     );
@@ -436,17 +565,20 @@ class _GameScreenState extends State<GameScreen> {
       builder: (ctx, _, __) => Container(
         width: size, height: size, 
         decoration: BoxDecoration(
-          shape: BoxShape.circle, color: Colors.amber[100], 
+          shape: BoxShape.circle, 
+          color: const Color(0xFFEEEEEE), 
           border: Border.all(color: item != null && item.isRuined ? Colors.red : Colors.amber, width: 4),
-          boxShadow: isReady ? [const BoxShadow(color: Colors.yellowAccent, blurRadius: 15, spreadRadius: 5)] : null,
+          boxShadow: isReady 
+            ? [const BoxShadow(color: Colors.amber, blurRadius: 20, spreadRadius: 2)] 
+            : [const BoxShadow(color: Colors.black54, blurRadius: 8, offset: Offset(0, 5))],
         ),
-        child: item == null ? const Center(child: Text('BÀN', textAlign: TextAlign.center, style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold))) : Draggable<PetItem>(
+        child: item == null ? const Center(child: Text('ĐĨA\nTRỐNG', textAlign: TextAlign.center, style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey))) : Draggable<PetItem>(
           data: item, onDragCompleted: () => setState(() => prepStations[i] = null),
-          feedback: Material(color: Colors.transparent, child: Text(item.name, style: const TextStyle(fontSize: 50))),
+          feedback: Material(color: Colors.transparent, child: Text(item.name, style: const TextStyle(fontSize: 60))),
           child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-            Text(item.name, style: TextStyle(fontSize: widget.stations > 3 ? 25 : 35)),
-            Text(item.isRuined ? '💥 HỎNG!' : (isReady ? '✨ XONG!' : '📦 LÀM...'), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 10, color: item.isRuined ? Colors.red : Colors.green[800])),
-            if (!item.isRuined) SizedBox(width: size - 40, child: LinearProgressIndicator(value: item.progress.clamp(0, 1), color: Colors.green)),
+            Text(item.name, style: TextStyle(fontSize: widget.stations > 3 ? 25 : 40)),
+            Text(item.isRuined ? '💥 CHÁY!' : (isReady ? '✨ HOÀN HẢO!' : '♨️ ĐANG NẤU...'), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 10, color: item.isRuined ? Colors.red : Colors.green[800])),
+            if (!item.isRuined) SizedBox(width: size - 40, child: LinearProgressIndicator(value: item.progress.clamp(0, 1), backgroundColor: Colors.grey[400], color: Colors.green)),
           ]),
         ),
       ),

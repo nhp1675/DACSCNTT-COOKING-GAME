@@ -38,6 +38,8 @@ dependencies:
   firebase_core: ^4.5.0
   cloud_firestore: ^6.1.3
   firebase_auth: ^6.2.0
+  google_sign_in: ^6.2.1
+  flame: ^1.36.0
 
 dev_dependencies:
   flutter_test:
@@ -61,6 +63,7 @@ flutter:
   # Khai báo thư mục chứa âm thanh của bạn (rút gọn lại, không cần liệt kê từng file)
   assets:
     - assets/audio/
+    - assets/images/
   # For details regarding adding assets from package dependencies, see
   # https://flutter.dev/to/asset-from-package
 
