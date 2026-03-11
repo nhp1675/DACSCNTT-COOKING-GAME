@@ -1395,7 +1395,7 @@ class _GameScreenState extends State<GameScreen> {
             : [const BoxShadow(color: Colors.black54, blurRadius: 8, offset: Offset(0, 5))],
         ),
         child: item == null 
-          ? const Center(child: Text('ĐĨA\nTRỐNG', textAlign: TextAlign.center, style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey))) 
+          ? const Center(child: Text('BẾP\nTRỐNG', textAlign: TextAlign.center, style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey))) 
           : Draggable<PetItem>(
               data: item, onDragCompleted: () => setState(() => prepStations[i] = null),
               feedback: Material(color: Colors.transparent, child: Text(item.name, style: const TextStyle(fontSize: 60))),
