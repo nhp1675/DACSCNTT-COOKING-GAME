@@ -6,7 +6,7 @@ Chào mừng bạn đến với **Nhà Hàng Thú Cưng** – một tựa game q
 
 ---
 
-## 👨‍💻 Thông tin sinh 
+## 👨‍💻 Thông tin sinh viên
 
 Dự án được phát triển bởi nhóm 3 thành viên:
 - **Nguyễn Hồng Phong** - 23010873
