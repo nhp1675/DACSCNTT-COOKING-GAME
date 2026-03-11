@@ -266,7 +266,7 @@ class _GameScreenState extends State<GameScreen> {
                   ),
                 ),
                 
-                const SizedBox(height: 30), 
+                const SizedBox(height: 20), 
                 
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -290,8 +290,18 @@ class _GameScreenState extends State<GameScreen> {
                   ],
                 ),
                 
-                const SizedBox(height: 30), 
-                Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: List.generate(widget.stations, (i) => _buildPrepStation(i))),
+                const SizedBox(height: 20), 
+                // Sử dụng SingleChildScrollView để bọc các bếp nấu, tránh lỗi tràn khi số lượng bếp quá nhiều (ví dụ 4-5 bếp trên đt bé)
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly, 
+                    children: List.generate(widget.stations, (i) => Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                      child: _buildPrepStation(i, screenWidth),
+                    ))
+                  ),
+                ),
                 const Spacer(), 
                 
                 Container(
@@ -371,13 +381,17 @@ class _GameScreenState extends State<GameScreen> {
     );
   }
 
-  Widget _buildPrepStation(int i) {
+  // Thuật toán co giãn tự động cho kích thước Bếp nấu
+  Widget _buildPrepStation(int i, double screenWidth) {
     var item = prepStations[i];
     double burnThreshold = 1.6 + (widget.burnLevel * 0.3); 
     double currentCookSpeed = 0.012 + (widget.cookSpeedLevel * 0.003); 
     bool isReady = item != null && item.progress >= 0.8 && !item.isRuined;
     bool isFire = item != null && item.isOnFire; 
-    double size = widget.stations > 3 ? 85 : 110; 
+    
+    // Tự động tính toán kích thước bếp dựa trên chiều rộng màn hình và số lượng bếp
+    double size = (screenWidth / widget.stations) - 16; 
+    size = size.clamp(70.0, 110.0); // Không cho bếp nhỏ quá 70px hoặc to quá 110px
 
     int secondsLeft = 0;
     if (item != null && !item.isRuined) { secondsLeft = ((burnThreshold - item.progress) / (currentCookSpeed * 10)).ceil(); }
@@ -391,9 +405,9 @@ class _GameScreenState extends State<GameScreen> {
             width: size, height: size,
             decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.redAccent, border: Border.all(color: Colors.yellowAccent, width: 4), boxShadow: [const BoxShadow(color: Colors.red, blurRadius: 15, spreadRadius: 5)]),
             child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-              Text('🔥', style: TextStyle(fontSize: widget.stations > 3 ? 30 : 40)),
+              Text('🔥', style: TextStyle(fontSize: size * 0.35)),
               const Text('KÉO 🧯 VÀO\nHOẶC NHẤN', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 9, color: Colors.white)),
-              SizedBox(width: size - 40, child: LinearProgressIndicator(value: 1.0 - ((item.ruinedTicks - 40) / 40.0).clamp(0, 1), backgroundColor: Colors.red[900], color: Colors.yellow))
+              SizedBox(width: size - 30, child: LinearProgressIndicator(value: 1.0 - ((item.ruinedTicks - 40) / 40.0).clamp(0, 1), backgroundColor: Colors.red[900], color: Colors.yellow))
             ]),
           ),
         ),
@@ -406,20 +420,20 @@ class _GameScreenState extends State<GameScreen> {
         width: size, height: size, 
         decoration: BoxDecoration(shape: BoxShape.circle, color: const Color(0xFFEEEEEE), border: Border.all(color: item != null && item.isRuined ? Colors.red : Colors.amber, width: 4), boxShadow: isReady ? [BoxShadow(color: secondsLeft <= 3 ? Colors.redAccent : Colors.amber, blurRadius: 20, spreadRadius: 2)] : [const BoxShadow(color: Colors.black54, blurRadius: 8, offset: Offset(0, 5))]),
         child: item == null 
-          ? const Center(child: Text('ĐĨA\nTRỐNG', textAlign: TextAlign.center, style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey))) 
+          ? Center(child: Text('BẾP\nTRỐNG', textAlign: TextAlign.center, style: TextStyle(fontSize: size * 0.12, fontWeight: FontWeight.bold, color: Colors.grey))) 
           : Draggable<PetItem>(
               data: item, onDragCompleted: () => setState(() => prepStations[i] = null),
               feedback: Material(color: Colors.transparent, child: Text(item.name, style: const TextStyle(fontSize: 60))),
               child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                Text(item.name, style: TextStyle(fontSize: widget.stations > 3 ? 25 : 40)),
+                Text(item.name, style: TextStyle(fontSize: size * 0.35)),
                 if (item.isRuined)
-                  Column(children: [const Text('💥 VỨT ĐI!', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 10, color: Colors.red)), SizedBox(width: size - 40, child: LinearProgressIndicator(value: (item.ruinedTicks / 40.0).clamp(0, 1), backgroundColor: Colors.grey[400], color: Colors.orange))])
+                  Column(children: [const Text('💥 VỨT ĐI!', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 10, color: Colors.red)), SizedBox(width: size - 30, child: LinearProgressIndicator(value: (item.ruinedTicks / 40.0).clamp(0, 1), backgroundColor: Colors.grey[400], color: Colors.orange))])
                 else if (isReady)
                   Text('✨ CHÍN! (${secondsLeft}s)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 10, color: secondsLeft <= 3 ? Colors.red : Colors.green[800]))
                 else
                   const Text('♨️ ĐANG NẤU...', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 10, color: Colors.black54)),
                 
-                if (!item.isRuined) SizedBox(width: size - 40, child: LinearProgressIndicator(value: item.progress.clamp(0, 1), backgroundColor: Colors.grey[400], color: isReady && secondsLeft <= 3 ? Colors.red : Colors.green)),
+                if (!item.isRuined) SizedBox(width: size - 30, child: LinearProgressIndicator(value: item.progress.clamp(0, 1), backgroundColor: Colors.grey[400], color: isReady && secondsLeft <= 3 ? Colors.red : Colors.green)),
               ]),
             ),
       ),

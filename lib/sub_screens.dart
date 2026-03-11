@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'game_screen.dart';
+import 'game_screen.dart'; // Import để chuyển sang màn chơi
 
 // --- MÀN HÌNH CHỌN CẤP ĐỘ ---
 class LevelSelectScreen extends StatelessWidget {
@@ -14,56 +14,64 @@ class LevelSelectScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final uid = FirebaseAuth.instance.currentUser?.uid;
+    // Tính toán số cột tự động dựa trên chiều rộng màn hình
+    double screenWidth = MediaQuery.of(context).size.width;
+    int columns = screenWidth > 800 ? 5 : (screenWidth > 500 ? 4 : 3);
 
     return Scaffold(
       appBar: AppBar(title: const Text('CHỌN MÀN CHƠI'), backgroundColor: Colors.green),
-      body: uid == null 
-        ? const Center(child: CircularProgressIndicator())
-        : StreamBuilder<DocumentSnapshot>(
-            // 🌟 Lắng nghe dữ liệu trực tiếp (Real-time) từ cơ sở dữ liệu
-            stream: FirebaseFirestore.instance.collection('users').doc(uid).snapshots(),
-            builder: (ctx, snap) {
-              int currentMaxLevel = maxLevel; 
-              // 🌟 Cập nhật cấp độ mới ngay lập tức khi vừa chơi xong
-              if (snap.hasData && snap.data!.exists) {
-                currentMaxLevel = snap.data!.get('maxLevel') ?? 1;
+      body: SafeArea(
+        child: uid == null 
+          ? const Center(child: CircularProgressIndicator())
+          : StreamBuilder<DocumentSnapshot>(
+              stream: FirebaseFirestore.instance.collection('users').doc(uid).snapshots(),
+              builder: (ctx, snap) {
+                int currentMaxLevel = maxLevel; 
+                if (snap.hasData && snap.data!.exists) {
+                  currentMaxLevel = snap.data!.get('maxLevel') ?? 1;
+                }
+
+                return GridView.builder(
+                  padding: const EdgeInsets.all(20),
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: columns, // Áp dụng số cột tự động
+                    crossAxisSpacing: 15, 
+                    mainAxisSpacing: 15
+                  ),
+                  itemCount: 20, 
+                  itemBuilder: (ctx, i) {
+                    int level = i + 1;
+                    bool isLocked = level > currentMaxLevel; 
+
+                    return InkWell(
+                      onTap: isLocked ? null : () => Navigator.push(ctx, MaterialPageRoute(builder: (c) => GameScreen(
+                        isEndless: false, level: level, stations: stations, burnLevel: burnLevel, maxHearts: maxHearts, 
+                        unlockedIngredients: unlockedIngredients, cookSpeedLevel: cookSpeedLevel, 
+                        isSoundOn: isSoundOn, bgMusic: bgMusic, playerName: playerName, playerAvatar: playerAvatar
+                      ))),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: isLocked ? Colors.grey[300] : Colors.white, 
+                          borderRadius: BorderRadius.circular(15), 
+                          border: Border.all(color: isLocked ? Colors.grey : Colors.greenAccent, width: 3)
+                        ),
+                        child: Center(
+                          child: isLocked 
+                            ? const Icon(Icons.lock, size: 40, color: Colors.grey)
+                            : Text('LV.$level', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.green))
+                        ),
+                      ),
+                    );
+                  },
+                );
               }
-
-              return GridView.builder(
-                padding: const EdgeInsets.all(20),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 4, crossAxisSpacing: 15, mainAxisSpacing: 15),
-                itemCount: 20, 
-                itemBuilder: (ctx, i) {
-                  int level = i + 1;
-                  // 🌟 Dùng currentMaxLevel thay cho maxLevel cũ
-                  bool isLocked = level > currentMaxLevel; 
-
-                  return InkWell(
-                    onTap: isLocked ? null : () => Navigator.push(ctx, MaterialPageRoute(builder: (c) => GameScreen(
-                      isEndless: false, level: level, stations: stations, burnLevel: burnLevel, maxHearts: maxHearts, 
-                      unlockedIngredients: unlockedIngredients, cookSpeedLevel: cookSpeedLevel, 
-                      isSoundOn: isSoundOn, bgMusic: bgMusic, playerName: playerName, playerAvatar: playerAvatar
-                    ))),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: isLocked ? Colors.grey[300] : Colors.white, 
-                        borderRadius: BorderRadius.circular(15), 
-                        border: Border.all(color: isLocked ? Colors.grey : Colors.greenAccent, width: 3)
-                      ),
-                      child: Center(
-                        child: isLocked 
-                          ? const Icon(Icons.lock, size: 40, color: Colors.grey)
-                          : Text('LV.$level', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.green))
-                      ),
-                    ),
-                  );
-                },
-              );
-            }
-          ),
+            ),
+      ),
     );
   }
-}// --- MÀN HÌNH CÀI ĐẶT ---
+}
+
+// --- MÀN HÌNH CÀI ĐẶT ---
 class SettingsScreen extends StatefulWidget {
   final String currentName;
   final String currentAvatar;

@@ -1,12 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'firebase_options.dart';
-import 'auth_screen.dart';
-import 'main_menu.dart';
+import 'auth_screen.dart'; 
+import 'main_menu.dart'; 
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // 🌟 Ép màn hình xoay ngang và chế độ Full màn hình (Immersive Mode)
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.landscapeLeft,
+    DeviceOrientation.landscapeRight,
+  ]);
+  await SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+
   try {
     await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   } catch (e) {

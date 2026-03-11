@@ -122,9 +122,15 @@ class _MainMenuState extends State<MainMenu> {
                   _btn(context, 'CÀI ĐẶT', Icons.settings, Colors.blueGrey, SettingsScreen(currentName: playerName, currentAvatar: playerAvatar, currentBgm: bgMusic, onUpdate: _loadData)),
                   const SizedBox(height: 20),
                   
+                  // Nút Đăng xuất riêng biệt vì nó thực hiện chức năng khác biệt
                   ElevatedButton.icon(
-                    icon: const Icon(Icons.logout, color: Colors.white), label: const Text('ĐĂNG XUẤT', style: TextStyle(color: Colors.white)),
-                    style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20))),
+                    icon: const Icon(Icons.logout, color: Colors.white), 
+                    label: const Text('ĐĂNG XUẤT', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.redAccent, 
+                      minimumSize: Size(MediaQuery.of(context).size.width * 0.6 > 350 ? 350 : MediaQuery.of(context).size.width * 0.6, 45), // Tự động co giãn
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30), side: const BorderSide(color: Colors.white, width: 2))
+                    ),
                     onPressed: () => FirebaseAuth.instance.signOut().then((_) => Navigator.pushReplacement(context, MaterialPageRoute(builder: (c) => const AuthScreen())))
                   )
                 ]),
@@ -137,10 +143,23 @@ class _MainMenuState extends State<MainMenu> {
     );
   }
 
-  Widget _btn(BuildContext context, String t, IconData icon, Color c, Widget p) => ElevatedButton.icon(
-    icon: Icon(icon, color: Colors.white),
-    label: Text(t, style: const TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold)),
-    style: ElevatedButton.styleFrom(backgroundColor: c, minimumSize: const Size(280, 45), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30), side: const BorderSide(color: Colors.white, width: 2))),
-    onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (ctx) => p)).then((_) => _loadData()),
-  );
+  // 🌟 Hàm tạo nút bấm đã được làm cho tự động co giãn theo chiều rộng màn hình điện thoại
+  Widget _btn(BuildContext context, String t, IconData icon, Color c, Widget p) {
+    double btnWidth = MediaQuery.of(context).size.width * 0.6;
+    if (btnWidth > 350) btnWidth = 350; // Không cho nút to quá trên PC
+
+    return ElevatedButton.icon(
+      icon: Icon(icon, color: Colors.white),
+      label: Text(t, style: const TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold)),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: c, 
+        minimumSize: Size(btnWidth, 45), // Sử dụng biến btnWidth thay vì số cứng 280
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(30), 
+          side: const BorderSide(color: Colors.white, width: 2)
+        )
+      ),
+      onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (ctx) => p)).then((_) => _loadData()),
+    );
+  }
 }
