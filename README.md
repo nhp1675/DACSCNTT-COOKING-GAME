@@ -3,7 +3,7 @@
 Chào mừng bạn đến với **Happy Pet Shop**! Đây là một tựa game quản lý thời gian vô cùng đáng yêu nhưng cũng không kém phần thử thách. Bạn sẽ vào vai một nhân viên chăm sóc, phục vụ thức ăn và đồ chơi cho những bé thú cưng đang thiếu kiên nhẫn!
 
 ## 🎮 Trải Nghiệm Game Ngay!
-👉 **[BẤM VÀO ĐÂY ĐỂ CHƠI TRÊN WEB](https://happypetcookingrestaurant.netlify.app/)**
+👉 **[BẤM VÀO ĐÂY ĐỂ CHƠI TRÊN WEB](https://happypetrestaurant.netlify.app/)**
 
 *(Khuyên dùng máy tính hoặc mở toàn màn hình trình duyệt để có trải nghiệm kéo-thả tốt nhất)*
 
