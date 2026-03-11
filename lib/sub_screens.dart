@@ -27,7 +27,14 @@ class LevelSelectScreen extends StatelessWidget {
               builder: (ctx, snap) {
                 int currentMaxLevel = maxLevel; 
                 if (snap.hasData && snap.data!.exists) {
-                  currentMaxLevel = snap.data!.get('maxLevel') ?? 1;
+                  var data = snap.data!.data() as Map<String, dynamic>? ?? {};
+                  currentMaxLevel = data['maxLevel'] ?? 1;
+                  
+                  // 🌟 KIỂM TRA QUYỀN ADMIN (Hỗ trợ cả biến 'isAdmin' và 'role')
+                  bool isAdmin = data['isAdmin'] == true || data['role'] == 'admin';
+                  if (isAdmin) {
+                    currentMaxLevel = 999; // Admin được mở khóa mọi level
+                  }
                 }
 
                 return GridView.builder(
@@ -68,9 +75,7 @@ class LevelSelectScreen extends StatelessWidget {
       ),
     );
   }
-}
-
-// --- MÀN HÌNH CÀI ĐẶT ---
+}// --- MÀN HÌNH CÀI ĐẶT ---
 class SettingsScreen extends StatefulWidget {
   final String currentName;
   final String currentAvatar;

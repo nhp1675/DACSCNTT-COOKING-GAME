@@ -20,7 +20,9 @@ class GameScreen extends StatefulWidget {
 }
 
 class _GameScreenState extends State<GameScreen> {
-  int score = 0; late int targetScore; late int currentDifficultyLevel; 
+  int score = 0; 
+  late int targetScore; 
+  late int currentDifficultyLevel; 
   late int hearts; 
   List<PetClient?> pets = []; 
   late int petSlots; 
@@ -30,12 +32,21 @@ class _GameScreenState extends State<GameScreen> {
   final AudioPlayer _audio = AudioPlayer();
   final AudioPlayer _bgmPlayer = AudioPlayer();
   
-  bool isPaused = false; int comboCount = 1; double comboTimeLeft = 0.0; 
+  bool isPaused = false; 
+  int comboCount = 1; 
+  double comboTimeLeft = 0.0; 
   List<FloatingScore> floatingScores = [];
 
-  int localServes = 0; int localFires = 0;
+  int localServes = 0; 
+  int localFires = 0;
 
-  final List<String> allSupplies = ['🦴', '🐟', '🥕', '🌻', '🥩', '🥦', '🍗', '🥛', '🍤', '🍎']; 
+  // 🌟 CÁC BIẾN MỚI CHO ADMIN PANEL
+  bool _isLoadingConfig = true; 
+  int _endlessMaxCustomers = 50; 
+  int _timeLimit = 60; 
+  double _timeLeft = 60.0;
+
+  List<String> allSupplies = ['🦴', '🐟', '🥕', '🌻', '🥩', '🥦', '🍗', '🥛', '🍤', '🍎']; 
   late List<String> activeMenu; 
   
   final List<String> petAvatars = ['assets/images/cat.png', 'assets/images/dog.png', 'assets/images/elephant.png', 'assets/images/fox.png', 'assets/images/koala.png', 'assets/images/zebra.png'];
@@ -43,14 +54,55 @@ class _GameScreenState extends State<GameScreen> {
   @override
   void initState() {
     super.initState();
-    hearts = widget.maxHearts; currentDifficultyLevel = widget.level;
-    targetScore = currentDifficultyLevel * 400 + 200; 
-
+    hearts = widget.maxHearts; 
+    currentDifficultyLevel = widget.level;
     prepStations = List.filled(widget.stations, null); 
+    
+    // 🌟 Thay vì chạy game ngay, tải cấu hình Firebase trước
+    _loadFirebaseConfig();
+    _playBGM();
+  }
+
+  // 🌟 HÀM TẢI DỮ LIỆU TỪ ADMIN
+  Future<void> _loadFirebaseConfig() async {
+    try {
+      // 1. Tải thực đơn món ăn
+      var menuDoc = await FirebaseFirestore.instance.collection('settings').doc('game').get();
+      if (menuDoc.exists && menuDoc.data()!.containsKey('supplies')) {
+        allSupplies = List<String>.from(menuDoc.data()!['supplies']);
+      }
+
+      // 2. Tải thông số màn chơi (Vô tận hoặc Cày ải)
+      if (widget.isEndless) {
+        var doc = await FirebaseFirestore.instance.collection('settings').doc('endless').get();
+        if (doc.exists && doc.data()!.containsKey('maxCustomers')) {
+          _endlessMaxCustomers = doc.data()!['maxCustomers'];
+        }
+      } else {
+        var doc = await FirebaseFirestore.instance.collection('levels').doc(widget.level.toString()).get();
+        if (doc.exists) {
+          targetScore = doc.data()!['targetScore'] ?? 100;
+          _timeLimit = doc.data()!['timeLimit'] ?? 60;
+        } else {
+          // Mặc định nếu admin chưa tạo màn này
+          targetScore = widget.level * 400 + 200; 
+          _timeLimit = 60;
+        }
+      }
+    } catch (e) {
+      debugPrint("Lỗi tải cấu hình: $e");
+    }
+
+    _timeLeft = _timeLimit.toDouble();
     _updateDifficultySettings();
 
-    _playBGM();
-    timer = Timer.periodic(const Duration(milliseconds: 100), (t) => _gameLoop());
+    // 🌟 Tải xong thì tắt Loading và bắt đầu đếm thời gian
+    if (mounted) {
+      setState(() {
+        _isLoadingConfig = false;
+      });
+      timer = Timer.periodic(const Duration(milliseconds: 100), (t) => _gameLoop());
+    }
   }
 
   void _updateDifficultySettings() {
@@ -132,6 +184,18 @@ class _GameScreenState extends State<GameScreen> {
     double burnThreshold = 1.6 + (widget.burnLevel * 0.3); 
     double currentCookSpeed = 0.012 + (widget.cookSpeedLevel * 0.003); 
 
+    // 🌟 1. Logic Đếm ngược thời gian cho chế độ Cày ải
+    if (!widget.isEndless) {
+      _timeLeft -= 0.1;
+      needsUpdate = true;
+      if (_timeLeft <= 0) {
+        // Hết giờ: Nếu điểm lớn hơn mục tiêu thì Win, ngược lại Lose
+        _endGame(score >= targetScore);
+        return;
+      }
+    }
+
+    // 🌟 2. Cập nhật độ khó vô tận
     if (widget.isEndless) {
       int dynamicLevel = (score / 1000).floor() + 1;
       if (dynamicLevel > currentDifficultyLevel) {
@@ -184,9 +248,15 @@ class _GameScreenState extends State<GameScreen> {
       }
     }
 
+    // 🌟 3. Điều kiện kết thúc game
     if (hearts <= 0) { 
       _endGame(false); needsUpdate = false; 
-    } else if (!widget.isEndless && score >= targetScore) {
+    } 
+    else if (!widget.isEndless && score >= targetScore) {
+      _endGame(true); needsUpdate = false;
+    } 
+    else if (widget.isEndless && localServes >= _endlessMaxCustomers) {
+      // Đã phục vụ đủ số khách mục tiêu của chế độ vô tận
       _endGame(true); needsUpdate = false;
     }
 
@@ -211,10 +281,24 @@ class _GameScreenState extends State<GameScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // 🌟 Hiển thị Loading khi đang kéo cấu hình từ Admin
+    if (_isLoadingConfig) {
+      return const Scaffold(
+        backgroundColor: Color(0xFF4A2F1D),
+        body: Center(
+          child: CircularProgressIndicator(color: Colors.amber),
+        ),
+      );
+    }
+
     bool isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
     double screenWidth = MediaQuery.of(context).size.width;
     double screenHeight = MediaQuery.of(context).size.height;
-    String scoreDisplay = widget.isEndless ? "ĐIỂM: $score" : "ĐIỂM: $score / $targetScore";
+    
+    // 🌟 Cập nhật thanh hiển thị phía trên cùng
+    String scoreDisplay = widget.isEndless 
+        ? "ĐIỂM: $score | KHÁCH: $localServes / $_endlessMaxCustomers" 
+        : "ĐIỂM: $score / $targetScore | ⏳ ${_timeLeft.ceil()}s";
 
     double horizontalPadding = petSlots > 6 ? (isLandscape ? 4.0 : 1.5) : 6.0; 
     double clientWidth = (screenWidth - 20) / petSlots - (horizontalPadding * 2);
@@ -297,21 +381,17 @@ class _GameScreenState extends State<GameScreen> {
                       ),
                 ),
                 
-                // 🌟 VÙNG CHỨA NGUYÊN LIỆU Ở GIỮA
                 Container(
                   width: double.infinity, 
                   padding: EdgeInsets.symmetric(vertical: (screenHeight * (isLandscape ? 0.02 : 0.03)).clamp(5.0, 15.0)), 
                   decoration: const BoxDecoration(color: Color(0xFF1A1A1A), borderRadius: BorderRadius.vertical(top: Radius.circular(20)), border: Border(top: BorderSide(color: Colors.amber, width: 3)), boxShadow: [BoxShadow(color: Colors.black, blurRadius: 15, offset: Offset(0, -5))]),
-                  // Bọc bằng Center để SingleChildScrollView luôn nhảy ra giữa
                   child: Center(
                     child: SingleChildScrollView(
                       scrollDirection: Axis.horizontal, physics: const BouncingScrollPhysics(),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center, 
                         children: activeMenu.map((m) {
-                          // Khoảng cách động: ít món thì xa nhau, nhiều món thì hẹp lại
-                          double dynamicSpacing = (screenWidth / (activeMenu.length * 2)).clamp(10.0, 30.0);
-                          
+                          double dynamicSpacing = (screenWidth / ((activeMenu.isEmpty ? 1 : activeMenu.length) * 2)).clamp(10.0, 30.0);
                           return Padding(
                             padding: EdgeInsets.symmetric(horizontal: dynamicSpacing),
                             child: Draggable<String>(
@@ -397,10 +477,9 @@ class _GameScreenState extends State<GameScreen> {
     
     bool isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
     
-    // Tự động tính kích thước bếp
     double size;
     if (isLandscape) {
-       size = (screenWidth * 0.7 / widget.stations) - 12; // Chiếm 70% bề ngang vì còn thùng rác
+       size = (screenWidth * 0.7 / widget.stations) - 12; 
     } else {
        size = (screenWidth / widget.stations) - 12; 
     }

@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'auth_screen.dart';
 import 'game_screen.dart';
 import 'sub_screens.dart';
+import 'admin_screen.dart'; // Import màn hình Admin
 
 class MainMenu extends StatefulWidget {
   const MainMenu({super.key});
@@ -15,6 +16,7 @@ class _MainMenuState extends State<MainMenu> {
   int coins = 0, stations = 2, burnLevel = 0, maxHearts = 3, unlockedIngredients = 0, cookSpeedLevel = 0;
   int maxLevel = 1; 
   bool isSoundOn = true; 
+  bool isAdmin = false; // 🌟 Biến kiểm tra quyền admin
   String playerName = "Đang tải...";
   String playerAvatar = "👨‍🍳";
   String bgMusic = "bgm1.mp3";
@@ -47,6 +49,8 @@ class _MainMenuState extends State<MainMenu> {
 
         if (mounted) {
           setState(() {
+            isAdmin = doc.data()?['role'] == 'admin'; // 🌟 Đọc role từ Firebase
+            
             coins = doc.data()?['coins'] ?? 0;
             stations = doc.data()?['stations'] ?? 2;
             burnLevel = doc.data()?['burnLevel'] ?? 0;
@@ -120,15 +124,20 @@ class _MainMenuState extends State<MainMenu> {
                   _btn(context, 'HƯỚNG DẪN', Icons.help_outline, Colors.teal, const TutorialScreen()),
                   const SizedBox(height: 12),
                   _btn(context, 'CÀI ĐẶT', Icons.settings, Colors.blueGrey, SettingsScreen(currentName: playerName, currentAvatar: playerAvatar, currentBgm: bgMusic, onUpdate: _loadData)),
-                  const SizedBox(height: 20),
-                  
-                  // Nút Đăng xuất riêng biệt vì nó thực hiện chức năng khác biệt
+                  const SizedBox(height: 12),
+
+                  // 🌟 NÚT HIỂN THỊ DÀNH RIÊNG CHO ADMIN
+                  if (isAdmin) ...[
+                    _btn(context, 'QUẢN LÝ (ADMIN)', Icons.admin_panel_settings, Colors.red, const AdminScreen()),
+                    const SizedBox(height: 12),
+                  ],
+
                   ElevatedButton.icon(
                     icon: const Icon(Icons.logout, color: Colors.white), 
                     label: const Text('ĐĂNG XUẤT', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.redAccent, 
-                      minimumSize: Size(MediaQuery.of(context).size.width * 0.6 > 350 ? 350 : MediaQuery.of(context).size.width * 0.6, 45), // Tự động co giãn
+                      backgroundColor: Colors.grey, 
+                      minimumSize: Size(MediaQuery.of(context).size.width * 0.6 > 350 ? 350 : MediaQuery.of(context).size.width * 0.6, 45), 
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30), side: const BorderSide(color: Colors.white, width: 2))
                     ),
                     onPressed: () => FirebaseAuth.instance.signOut().then((_) => Navigator.pushReplacement(context, MaterialPageRoute(builder: (c) => const AuthScreen())))
@@ -143,17 +152,16 @@ class _MainMenuState extends State<MainMenu> {
     );
   }
 
-  // 🌟 Hàm tạo nút bấm đã được làm cho tự động co giãn theo chiều rộng màn hình điện thoại
   Widget _btn(BuildContext context, String t, IconData icon, Color c, Widget p) {
     double btnWidth = MediaQuery.of(context).size.width * 0.6;
-    if (btnWidth > 350) btnWidth = 350; // Không cho nút to quá trên PC
+    if (btnWidth > 350) btnWidth = 350; 
 
     return ElevatedButton.icon(
       icon: Icon(icon, color: Colors.white),
       label: Text(t, style: const TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold)),
       style: ElevatedButton.styleFrom(
         backgroundColor: c, 
-        minimumSize: Size(btnWidth, 45), // Sử dụng biến btnWidth thay vì số cứng 280
+        minimumSize: Size(btnWidth, 45), 
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(30), 
           side: const BorderSide(color: Colors.white, width: 2)
