@@ -1,43 +1,107 @@
-# 🐾 Happy Pet Shop - Game Chăm Sóc Thú Cưng
+Markdown
+# 🐾 Nhà Hàng Thú Cưng (Happy Pet Shop) 🐾
 
-Chào mừng bạn đến với **Happy Pet Shop**! Đây là một tựa game quản lý thời gian vô cùng đáng yêu nhưng cũng không kém phần thử thách. Bạn sẽ vào vai một nhân viên chăm sóc, phục vụ thức ăn và đồ chơi cho những bé thú cưng đang thiếu kiên nhẫn!
+Chào mừng bạn đến với **Nhà Hàng Thú Cưng** – một tựa game quản lý thời gian và nấu ăn vui nhộn được xây dựng bằng Flutter. Vào vai một đầu bếp tài ba, nhiệm vụ của bạn là phục vụ những vị khách thú cưng siêu đáng yêu nhưng cũng rất thiếu kiên nhẫn!
 
-## 🎮 Trải Nghiệm Game Ngay!
-👉 **[BẤM VÀO ĐÂY ĐỂ CHƠI TRÊN WEB](https://happypetrestaurant.netlify.app/)**
+🎮 **[CHƠI GAME TRỰC TUYẾN TẠI ĐÂY](https://happypetrestaurant.netlify.app/)** 🎮
 
-*(Khuyên dùng máy tính hoặc mở toàn màn hình trình duyệt để có trải nghiệm kéo-thả tốt nhất)*
+---
 
-## ✨ Tính Năng Nổi Bật
+## 👨‍💻 Thông tin sinh viên
+Dự án được phát triển bởi nhóm 3 thành viên:
+- **Nguyễn Hồng Phong** - 23010873
+- **Vũ Hồng Phúc** - 23010855
+- **Cung Đỗ Hải Phong** - 23010341
 
-* **Hệ thống Tài khoản:** Đăng nhập và Đăng ký an toàn với Firebase Authentication. Dữ liệu của bạn luôn được lưu lại!
-* **Gameplay Kéo Thả Thử Thách:** * Kéo các vật dụng (🦴, 🐟, 🥕...) vào bàn chuẩn bị.
-  * Canh thời gian chuẩn xác để đồ ăn/đồ chơi sẵn sàng (hiện chữ ✨ XONG!). Nếu để quá lâu, đồ sẽ bị hỏng (💥 HỎNG!).
-  * Giao đúng món đồ cho các bé thú cưng (🐶, 🐱, 🐰...) trước khi thanh kiên nhẫn của chúng cạn kiệt.
-* **Hệ thống Cửa Hàng (Shop):** Dùng số tiền 💰 kiếm được sau mỗi màn chơi để nâng cấp cửa tiệm:
-  * 📦 **Thêm Bàn Chuẩn Bị:** Mở rộng không gian làm việc (Tối đa 4 bàn).
-  * ⏳ **Tủ Lạnh Mini:** Giúp đồ ăn lâu bị hỏng hơn (Tối đa cấp 5).
-  * ❤️ **Tăng Tim Tối Đa:** Tăng số lần được phép mắc lỗi/bỏ lỡ khách (Tối đa 6 tim).
-* **Bảng Xếp Hạng Thời Gian Thực:** Vinh danh Top 10 người chăm thú xuất sắc nhất trên hệ thống Cloud Firestore.
-* **Âm Thanh & Hiệu Ứng:** Tích hợp âm thanh chuông báo khách, tiếng thu tiền, tiếng báo lỗi và hiệu ứng rung (Haptic Feedback) sống động.
+---
 
-## 🛠️ Công Nghệ Sử Dụng
+## 🌟 Các tính năng chính
 
-* **Frontend:** Flutter & Dart
-* **Backend & Cơ Sở Dữ Liệu:** Firebase (Authentication & Cloud Firestore)
-* **Quản lý Âm thanh:** Gói thư viện `audioplayers`
+### 1. Dành cho Người chơi (Player)
+- **Hệ thống Tài khoản**: Đăng nhập/Đăng ký bằng Email & Mật khẩu hoặc đăng nhập nhanh qua Google (Tích hợp Firebase Auth).
+- **Chế độ chơi Đa dạng**:
+  - 🗺️ *Cày Ải*: Vượt qua các cấp độ với điểm số và thời gian giới hạn.
+  - ♾️ *Vô Tận*: Thử thách bản thân với số lượng khách hàng lớn và độ khó tăng dần theo thời gian.
+- **Gameplay Cuốn hút**: 
+  - Kéo thả nguyên liệu để nấu ăn, quản lý thời gian để không làm cháy món.
+  - Phục vụ Khách VIP (👑) để nhận nhiều tiền hơn.
+  - Tích lũy thanh COMBO (x2, x3, x4...) để bùng nổ doanh thu.
+  - Sử dụng Thùng Rác (🗑️) để vứt đồ cháy và Bình Cứu Hỏa (🧯) để dập tắt bếp lửa.
+- **Cửa Hàng Nâng Cấp (Shop)**: Dùng tiền kiếm được để mua thêm Bếp nấu, Tăng tốc độ nấu, Chảo chống dính, Mua thêm Tim (Mạng) và Mở khóa các nguyên liệu cao cấp.
+- **Nhiệm vụ & Thành tựu**: Hệ thống phần thưởng phong phú kích thích người chơi cày cuốc.
+- **Bảng Xếp Hạng (Leaderboard)**: So tài điểm số với các đầu bếp khác trên toàn server.
+- **Tùy chỉnh Hồ sơ**: Đổi tên, thay đổi Avatar thú cưng và lựa chọn Nhạc nền (BGM) yêu thích.
 
-## 🚀 Hướng Dẫn Cài Đặt (Dành cho Developer)
+### 2. Dành cho Quản trị viên (Admin Panel)
+Tích hợp sẵn bảng điều khiển (Dashboard) dành riêng cho tài khoản được cấp quyền `admin` trên Firebase:
+- 🍔 **Quản lý Thực đơn**: Thêm/Xóa các món ăn (Emoji) trực tiếp, mọi người chơi sẽ được cập nhật menu ngay lập tức.
+- 🗺️ **Quản lý Màn chơi (Cày Ải)**: Thêm mới, chỉnh sửa (thời gian, điểm mục tiêu) hoặc xóa các màn chơi mà không cần phải cập nhật lại app.
+- ♾️ **Quản lý Chế độ Vô tận**: Điều chỉnh số lượng khách hàng tối đa cho thử thách vô tận.
+- 🔓 **Đặc quyền Admin**: Tự động mở khóa toàn bộ màn chơi để test game dễ dàng.
 
-Nếu bạn muốn tải source code này về để tham khảo hoặc phát triển thêm:
+---
 
-1. Clone repository này về máy:
+## 🛠️ Công nghệ sử dụng
+- **Frontend Framework**: [Flutter](https://flutter.dev/) (Hỗ trợ Responsive xoay ngang/dọc, tối ưu cho cả Web và Mobile).
+- **Backend/Database**: [Firebase](https://firebase.google.com/)
+  - `Firebase Authentication`: Quản lý xác thực người dùng.
+  - `Cloud Firestore`: Lưu trữ cơ sở dữ liệu thời gian thực (Thông tin người chơi, Nhiệm vụ, Shop, Leaderboard, Cấu hình Admin).
+- **Thư viện bên thứ 3**:
+  - `google_sign_in`: Đăng nhập bằng Google.
+  - `audioplayers`: Xử lý âm thanh, nhạc nền và hiệu ứng (BGM, Kaching, Oh no, Bell...).
+
+---
+
+## 🚀 Hướng dẫn cài đặt và Chạy source code
+
+### Yêu cầu hệ thống:
+- Đã cài đặt [Flutter SDK](https://docs.flutter.dev/get-started/install).
+- Trình soạn thảo (VS Code, Android Studio...).
+- File `firebase_options.dart` đã được cấu hình trỏ đến dự án Firebase của bạn (Dự án hiện tại là `cooking-game-cf5a9`).
+
+### Các bước chạy:
+1. **Clone repository về máy**:
    ```bash
-   git clone [https://github.com/nhp1675/DACSCNTT-COOKING-GAME.git](https://github.com/nhp1675/DACSCNTT-COOKING-GAME.git)
-Cài đặt các thư viện phụ thuộc:
+   git clone [link-repo-cua-ban]
+   cd [ten-thu-muc-repo]
+Cài đặt các gói thư viện phụ thuộc:
 
 Bash
 flutter pub get
-Chạy dự án:
+Chạy ứng dụng (Khuyên dùng trên thiết bị thật, máy ảo hoặc Web để trải nghiệm tốt nhất):
 
 Bash
 flutter run
+Cách phân quyền Admin:
+Tạo một tài khoản trong game.
+
+Truy cập Firebase Console > Mở dự án cooking-game-cf5a9.
+
+Vào Firestore Database > Chọn collection users.
+
+Tìm đến UID của tài khoản vừa tạo > Thêm trường dữ liệu (Add field):
+
+Field: role
+
+Type: string
+
+Value: admin
+
+Khởi động lại game, nút QUẢN LÝ (ADMIN) màu đỏ sẽ xuất hiện ở Menu chính.
+
+📜 Cấu trúc thư mục (Các file chính)
+main.dart: Khởi tạo app, ép màn hình ngang (Landscape Immersive), cấu hình Firebase.
+
+auth_screen.dart: Giao diện và logic Đăng nhập / Đăng ký.
+
+main_menu.dart: Giao diện sảnh chờ chính.
+
+game_screen.dart: Chứa toàn bộ logic Gameplay (Đếm ngược, sinh khách hàng, bếp nấu, kéo thả, tính điểm...).
+
+sub_screens.dart: Các màn hình phụ như Chọn Level, Shop, Nhiệm vụ, Thành tựu, Cài đặt, Bảng xếp hạng.
+
+admin_screen.dart: Giao diện dành cho Admin quản lý game.
+
+models.dart: Các Class định nghĩa đối tượng (PetClient, PetItem, FloatingScore).
+
+Cảm ơn bạn đã trải nghiệm Nhà Hàng Thú Cưng! Chúc bạn chơi game vui vẻ! 🐾❤️
