@@ -211,21 +211,17 @@ class _GameScreenState extends State<GameScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Nhận diện màn hình đang dọc hay ngang
     bool isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
     double screenWidth = MediaQuery.of(context).size.width;
     double screenHeight = MediaQuery.of(context).size.height;
     String scoreDisplay = widget.isEndless ? "ĐIỂM: $score" : "ĐIỂM: $score / $targetScore";
 
-    // Tính toán độ rộng khách hàng: Xoay ngang thì khoảng cách giữa các khách giãn ra thoải mái hơn
     double horizontalPadding = petSlots > 6 ? (isLandscape ? 4.0 : 1.5) : 6.0; 
     double clientWidth = (screenWidth - 20) / petSlots - (horizontalPadding * 2);
     clientWidth = clientWidth.clamp(40.0, isLandscape ? 120.0 : 110.0); 
     
-    // Kích thước thùng rác & bình chữa cháy nhỏ lại một chút khi xoay ngang
     double utilSize = (screenHeight * (isLandscape ? 0.2 : 0.15)).clamp(40.0, 60.0);
 
-    // Widget Thùng rác
     Widget trashWidget = DragTarget<PetItem>(
       onAccept: (item) { HapticFeedback.mediumImpact(); }, 
       builder: (ctx, _, __) => Container(
@@ -235,7 +231,6 @@ class _GameScreenState extends State<GameScreen> {
       ),
     );
 
-    // Widget Bình cứu hỏa
     Widget extinguisherWidget = Draggable<String>(
       data: 'extinguisher', feedback: const Material(color: Colors.transparent, child: Text('🧯', style: TextStyle(fontSize: 60))),
       child: Container(
@@ -271,7 +266,6 @@ class _GameScreenState extends State<GameScreen> {
                     ),
                   ),
 
-                // KHU VỰC KHÁCH HÀNG - Dùng Expanded để tự động chiếm không gian
                 Expanded(
                   flex: isLandscape ? 4 : 3,
                   child: Center(
@@ -282,11 +276,10 @@ class _GameScreenState extends State<GameScreen> {
                   ),
                 ),
                 
-                // KHU VỰC BẾP + ĐỒ DÙNG
                 Expanded(
                   flex: isLandscape ? 4 : 3,
                   child: isLandscape 
-                    ? Row( // Khi xoay ngang: Đặt chung Bếp và Đồ dùng trên 1 dòng
+                    ? Row( 
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Column(mainAxisAlignment: MainAxisAlignment.center, children: [trashWidget, const SizedBox(height: 10), extinguisherWidget]),
@@ -294,7 +287,7 @@ class _GameScreenState extends State<GameScreen> {
                           ...List.generate(widget.stations, (i) => Padding(padding: const EdgeInsets.symmetric(horizontal: 4.0), child: _buildPrepStation(i, screenWidth))),
                         ],
                       )
-                    : Column( // Khi để dọc: Để 2 hàng riêng biệt như cũ
+                    : Column( 
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Row(mainAxisAlignment: MainAxisAlignment.center, children: [trashWidget, extinguisherWidget]),
@@ -304,23 +297,31 @@ class _GameScreenState extends State<GameScreen> {
                       ),
                 ),
                 
-                // KHU VỰC MENU ĐỒ ĂN BÊN DƯỚI
+                // 🌟 VÙNG CHỨA NGUYÊN LIỆU Ở GIỮA
                 Container(
                   width: double.infinity, 
                   padding: EdgeInsets.symmetric(vertical: (screenHeight * (isLandscape ? 0.02 : 0.03)).clamp(5.0, 15.0)), 
                   decoration: const BoxDecoration(color: Color(0xFF1A1A1A), borderRadius: BorderRadius.vertical(top: Radius.circular(20)), border: Border(top: BorderSide(color: Colors.amber, width: 3)), boxShadow: [BoxShadow(color: Colors.black, blurRadius: 15, offset: Offset(0, -5))]),
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal, physics: const BouncingScrollPhysics(),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center, 
-                      children: activeMenu.map((m) => Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        child: Draggable<String>(
-                          data: m, 
-                          feedback: Material(color: Colors.transparent, child: Text(m, style: const TextStyle(fontSize: 60))), 
-                          child: Text(m, style: TextStyle(fontSize: (screenHeight * (isLandscape ? 0.15 : 0.1)).clamp(30.0, 45.0)))
-                        ),
-                      )).toList()
+                  // Bọc bằng Center để SingleChildScrollView luôn nhảy ra giữa
+                  child: Center(
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal, physics: const BouncingScrollPhysics(),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center, 
+                        children: activeMenu.map((m) {
+                          // Khoảng cách động: ít món thì xa nhau, nhiều món thì hẹp lại
+                          double dynamicSpacing = (screenWidth / (activeMenu.length * 2)).clamp(10.0, 30.0);
+                          
+                          return Padding(
+                            padding: EdgeInsets.symmetric(horizontal: dynamicSpacing),
+                            child: Draggable<String>(
+                              data: m, 
+                              feedback: Material(color: Colors.transparent, child: Text(m, style: const TextStyle(fontSize: 60))), 
+                              child: Text(m, style: TextStyle(fontSize: (screenHeight * (isLandscape ? 0.15 : 0.1)).clamp(30.0, 45.0)))
+                            ),
+                          );
+                        }).toList()
+                      ),
                     ),
                   ),
                 ),

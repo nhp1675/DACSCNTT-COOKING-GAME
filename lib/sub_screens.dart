@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'game_screen.dart'; // Import để chuyển sang màn chơi
+import 'game_screen.dart'; 
 
 // --- MÀN HÌNH CHỌN CẤP ĐỘ ---
 class LevelSelectScreen extends StatelessWidget {
@@ -14,7 +14,6 @@ class LevelSelectScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final uid = FirebaseAuth.instance.currentUser?.uid;
-    // Tính toán số cột tự động dựa trên chiều rộng màn hình
     double screenWidth = MediaQuery.of(context).size.width;
     int columns = screenWidth > 800 ? 5 : (screenWidth > 500 ? 4 : 3);
 
@@ -34,7 +33,7 @@ class LevelSelectScreen extends StatelessWidget {
                 return GridView.builder(
                   padding: const EdgeInsets.all(20),
                   gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: columns, // Áp dụng số cột tự động
+                    crossAxisCount: columns, 
                     crossAxisSpacing: 15, 
                     mainAxisSpacing: 15
                   ),
@@ -226,31 +225,52 @@ class QuestScreen extends StatelessWidget {
 
   const QuestScreen({super.key, required this.dailyServes, required this.dailyEarnings, required this.dailyGames, required this.claimedQ1, required this.claimedQ2, required this.claimedQ3, required this.coins, required this.onUpdate});
 
-  void _claimReward(BuildContext context, String claimField, int reward) async {
+  // 🌟 Đã xóa Navigator.pop để không bị văng ra Menu
+  void _claimReward(BuildContext context, String claimField, int reward, int currentCoins) async {
     final uid = FirebaseAuth.instance.currentUser!.uid;
-    await FirebaseFirestore.instance.collection('users').doc(uid).set({'coins': coins + reward, claimField: true}, SetOptions(merge: true));
+    await FirebaseFirestore.instance.collection('users').doc(uid).set({'coins': currentCoins + reward, claimField: true}, SetOptions(merge: true));
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Nhận thành công $reward \$! 🥳"), backgroundColor: Colors.green));
-    onUpdate(); Navigator.pop(context); 
+    onUpdate(); 
   }
 
   @override
   Widget build(BuildContext context) {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
     return Scaffold(
       appBar: AppBar(title: const Text('NHIỆM VỤ HÀNG NGÀY'), backgroundColor: Colors.deepPurple, leading: IconButton(icon: const Icon(Icons.arrow_back_ios_new), onPressed: () => Navigator.pop(context))),
-      body: ListView(
-        padding: const EdgeInsets.all(20),
-        children: [
-          const Text("Hoàn thành nhiệm vụ mỗi ngày để nhận thưởng lớn nhé!", style: TextStyle(fontSize: 16, fontStyle: FontStyle.italic, color: Colors.grey), textAlign: TextAlign.center),
-          const SizedBox(height: 20),
-          _questCard(context, 'Phục vụ 15 vị khách', dailyServes, 15, 100, claimedQ1, 'claimedQ1'),
-          _questCard(context, 'Kiếm được 1000 \$', dailyEarnings, 1000, 150, claimedQ2, 'claimedQ2'),
-          _questCard(context, 'Chơi hoàn thành 3 ván', dailyGames, 3, 50, claimedQ3, 'claimedQ3'),
-        ],
+      // 🌟 Dùng StreamBuilder để cập nhật nút nhận ngay lập tức
+      body: StreamBuilder<DocumentSnapshot>(
+        stream: FirebaseFirestore.instance.collection('users').doc(uid).snapshots(),
+        builder: (ctx, snap) {
+          if (!snap.hasData) return const Center(child: CircularProgressIndicator());
+          var data = snap.data!.data() as Map<String, dynamic>? ?? {};
+          
+          int cCoins = data['coins'] ?? coins;
+          int cServes = data['dailyServes'] ?? dailyServes;
+          int cEarnings = data['dailyEarnings'] ?? dailyEarnings;
+          int cGames = data['dailyGames'] ?? dailyGames;
+          bool cQ1 = data['claimedQ1'] ?? claimedQ1;
+          bool cQ2 = data['claimedQ2'] ?? claimedQ2;
+          bool cQ3 = data['claimedQ3'] ?? claimedQ3;
+
+          return ListView(
+            padding: const EdgeInsets.all(20),
+            children: [
+              Text("Tiền hiện tại: $cCoins \$", style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.amber), textAlign: TextAlign.center),
+              const SizedBox(height: 10),
+              const Text("Hoàn thành nhiệm vụ mỗi ngày để nhận thưởng lớn nhé!", style: TextStyle(fontSize: 16, fontStyle: FontStyle.italic, color: Colors.grey), textAlign: TextAlign.center),
+              const SizedBox(height: 20),
+              _questCard(context, 'Phục vụ 15 vị khách', cServes, 15, 100, cQ1, 'claimedQ1', cCoins),
+              _questCard(context, 'Kiếm được 1000 \$', cEarnings, 1000, 150, cQ2, 'claimedQ2', cCoins),
+              _questCard(context, 'Chơi hoàn thành 3 ván', cGames, 3, 50, cQ3, 'claimedQ3', cCoins),
+            ],
+          );
+        }
       ),
     );
   }
 
-  Widget _questCard(BuildContext context, String title, int current, int target, int reward, bool isClaimed, String claimField) {
+  Widget _questCard(BuildContext context, String title, int current, int target, int reward, bool isClaimed, String claimField, int currentCoins) {
     double progress = (current / target).clamp(0.0, 1.0);
     bool isCompleted = current >= target;
 
@@ -265,7 +285,7 @@ class QuestScreen extends StatelessWidget {
             const SizedBox(height: 10),
             Row(children: [Expanded(child: LinearProgressIndicator(value: progress, minHeight: 10, backgroundColor: Colors.grey[300], color: isCompleted ? Colors.green : Colors.blueAccent, borderRadius: BorderRadius.circular(5))), const SizedBox(width: 10), Text('${current > target ? target : current} / $target', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold))]),
             const SizedBox(height: 10),
-            SizedBox(width: double.infinity, child: ElevatedButton(onPressed: (isCompleted && !isClaimed) ? () => _claimReward(context, claimField, reward) : null, style: ElevatedButton.styleFrom(backgroundColor: isClaimed ? Colors.grey : (isCompleted ? Colors.amber : Colors.blueGrey)), child: Text(isClaimed ? 'ĐÃ NHẬN' : (isCompleted ? 'NHẬN THƯỞNG' : 'CHƯA HOÀN THÀNH'), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold))))
+            SizedBox(width: double.infinity, child: ElevatedButton(onPressed: (isCompleted && !isClaimed) ? () => _claimReward(context, claimField, reward, currentCoins) : null, style: ElevatedButton.styleFrom(backgroundColor: isClaimed ? Colors.grey : (isCompleted ? Colors.amber : Colors.blueGrey)), child: Text(isClaimed ? 'ĐÃ NHẬN' : (isCompleted ? 'NHẬN THƯỞNG' : 'CHƯA HOÀN THÀNH'), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold))))
           ],
         ),
       ),
@@ -281,32 +301,55 @@ class AchievementScreen extends StatelessWidget {
 
   const AchievementScreen({super.key, required this.totalServes, required this.totalEarnings, required this.totalGames, required this.totalFires, required this.ach1, required this.ach2, required this.ach3, required this.ach4, required this.coins, required this.onUpdate});
 
-  void _claimReward(BuildContext context, String claimField, int reward) async {
+  // 🌟 Đã xóa Navigator.pop
+  void _claimReward(BuildContext context, String claimField, int reward, int currentCoins) async {
     final uid = FirebaseAuth.instance.currentUser!.uid;
-    await FirebaseFirestore.instance.collection('users').doc(uid).set({'coins': coins + reward, claimField: true}, SetOptions(merge: true));
+    await FirebaseFirestore.instance.collection('users').doc(uid).set({'coins': currentCoins + reward, claimField: true}, SetOptions(merge: true));
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Chúc mừng! Nhận $reward \$! 🎉"), backgroundColor: Colors.orange));
-    onUpdate(); Navigator.pop(context); 
+    onUpdate(); 
   }
 
   @override
   Widget build(BuildContext context) {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
     return Scaffold(
       appBar: AppBar(title: const Text('🏆 THÀNH TỰU'), backgroundColor: Colors.orangeAccent, leading: IconButton(icon: const Icon(Icons.arrow_back_ios_new), onPressed: () => Navigator.pop(context))),
-      body: ListView(
-        padding: const EdgeInsets.all(20),
-        children: [
-          const Text("Các thành tựu này tích lũy vĩnh viễn trong suốt quá trình chơi. Cố lên nhé!", style: TextStyle(fontSize: 16, fontStyle: FontStyle.italic, color: Colors.grey), textAlign: TextAlign.center),
-          const SizedBox(height: 20),
-          _achieveCard(context, '🥉 Người Mới Bắt Đầu', 'Chơi tổng cộng 10 ván.', totalGames, 10, 500, ach1, 'ach1', Colors.brown[300]!),
-          _achieveCard(context, '🥈 Đầu Bếp Chăm Chỉ', 'Phục vụ tổng cộng 100 khách.', totalServes, 100, 1500, ach2, 'ach2', Colors.blueGrey[300]!),
-          _achieveCard(context, '🥇 Đại Gia Thú Cưng', 'Kiếm tổng cộng 10,000 \$', totalEarnings, 10000, 3000, ach3, 'ach3', Colors.amber),
-          _achieveCard(context, '🧯 Lính Cứu Hỏa', 'Dập lửa thành công 20 lần.', totalFires, 20, 2000, ach4, 'ach4', Colors.redAccent),
-        ],
+      // 🌟 Dùng StreamBuilder để nảy tiền và nảy nút ngay lập tức
+      body: StreamBuilder<DocumentSnapshot>(
+        stream: FirebaseFirestore.instance.collection('users').doc(uid).snapshots(),
+        builder: (ctx, snap) {
+          if (!snap.hasData) return const Center(child: CircularProgressIndicator());
+          var data = snap.data!.data() as Map<String, dynamic>? ?? {};
+
+          int cCoins = data['coins'] ?? coins;
+          int cServes = data['totalServes'] ?? totalServes;
+          int cEarnings = data['totalEarnings'] ?? totalEarnings;
+          int cGames = data['totalGames'] ?? totalGames;
+          int cFires = data['totalFires'] ?? totalFires;
+          bool cA1 = data['ach1'] ?? ach1;
+          bool cA2 = data['ach2'] ?? ach2;
+          bool cA3 = data['ach3'] ?? ach3;
+          bool cA4 = data['ach4'] ?? ach4;
+
+          return ListView(
+            padding: const EdgeInsets.all(20),
+            children: [
+              Text("Tiền hiện tại: $cCoins \$", style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.blueAccent), textAlign: TextAlign.center),
+              const SizedBox(height: 10),
+              const Text("Các thành tựu này tích lũy vĩnh viễn trong suốt quá trình chơi. Cố lên nhé!", style: TextStyle(fontSize: 16, fontStyle: FontStyle.italic, color: Colors.grey), textAlign: TextAlign.center),
+              const SizedBox(height: 20),
+              _achieveCard(context, '🥉 Người Mới Bắt Đầu', 'Chơi tổng cộng 10 ván.', cGames, 10, 500, cA1, 'ach1', Colors.brown[300]!, cCoins),
+              _achieveCard(context, '🥈 Đầu Bếp Chăm Chỉ', 'Phục vụ tổng cộng 100 khách.', cServes, 100, 1500, cA2, 'ach2', Colors.blueGrey[300]!, cCoins),
+              _achieveCard(context, '🥇 Đại Gia Thú Cưng', 'Kiếm tổng cộng 10,000 \$', cEarnings, 10000, 3000, cA3, 'ach3', Colors.amber, cCoins),
+              _achieveCard(context, '🧯 Lính Cứu Hỏa', 'Dập lửa thành công 20 lần.', cFires, 20, 2000, cA4, 'ach4', Colors.redAccent, cCoins),
+            ],
+          );
+        }
       ),
     );
   }
 
-  Widget _achieveCard(BuildContext context, String title, String desc, int current, int target, int reward, bool isClaimed, String claimField, Color themeColor) {
+  Widget _achieveCard(BuildContext context, String title, String desc, int current, int target, int reward, bool isClaimed, String claimField, Color themeColor, int currentCoins) {
     double progress = (current / target).clamp(0.0, 1.0);
     bool isCompleted = current >= target;
 
@@ -321,7 +364,7 @@ class AchievementScreen extends StatelessWidget {
             const SizedBox(height: 5), Text(desc, style: const TextStyle(fontSize: 13, color: Colors.black87)), const SizedBox(height: 10),
             Row(children: [Expanded(child: LinearProgressIndicator(value: progress, minHeight: 12, backgroundColor: Colors.grey[300], color: isCompleted ? themeColor : Colors.blueGrey, borderRadius: BorderRadius.circular(5))), const SizedBox(width: 10), Text('${current > target ? target : current} / $target', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold))]),
             const SizedBox(height: 10),
-            SizedBox(width: double.infinity, child: ElevatedButton(onPressed: (isCompleted && !isClaimed) ? () => _claimReward(context, claimField, reward) : null, style: ElevatedButton.styleFrom(backgroundColor: isClaimed ? Colors.grey : (isCompleted ? themeColor : Colors.grey[400])), child: Text(isClaimed ? 'ĐÃ NHẬN' : (isCompleted ? 'NHẬN HUY CHƯƠNG' : 'CHƯA HOÀN THÀNH'), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold))))
+            SizedBox(width: double.infinity, child: ElevatedButton(onPressed: (isCompleted && !isClaimed) ? () => _claimReward(context, claimField, reward, currentCoins) : null, style: ElevatedButton.styleFrom(backgroundColor: isClaimed ? Colors.grey : (isCompleted ? themeColor : Colors.grey[400])), child: Text(isClaimed ? 'ĐÃ NHẬN' : (isCompleted ? 'NHẬN HUY CHƯƠNG' : 'CHƯA HOÀN THÀNH'), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold))))
           ],
         ),
       ),
@@ -335,25 +378,52 @@ class ShopScreen extends StatelessWidget {
   final VoidCallback onUpdate;
   const ShopScreen({super.key, required this.coins, required this.stations, required this.burnLevel, required this.maxHearts, required this.unlockedIngredients, required this.cookSpeedLevel, required this.onUpdate});
 
-  void _buy(BuildContext context, String field, int cost, int currentValue, int maxValue) async {
+  // 🌟 Chức năng mua đồ: Trừ tiền, cập nhật ngay lập tức và KHÔNG BỊ BACK ra Menu
+  void _buy(BuildContext context, String field, int cost, int currentValue, int maxValue, int currentCoins) async {
     if (currentValue >= maxValue) { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Đã nâng cấp tối đa!"))); return; }
-    if (coins < cost) { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Bạn không đủ tiền!"), backgroundColor: Colors.red)); return; }
+    if (currentCoins < cost) { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Bạn không đủ tiền!"), backgroundColor: Colors.red)); return; }
+    
     final uid = FirebaseAuth.instance.currentUser!.uid;
-    await FirebaseFirestore.instance.collection('users').doc(uid).set({'coins': coins - cost, field: currentValue + 1}, SetOptions(merge: true));
-    onUpdate(); Navigator.pop(context); ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Nâng cấp thành công! 🥳"), backgroundColor: Colors.green));
+    await FirebaseFirestore.instance.collection('users').doc(uid).set({'coins': currentCoins - cost, field: currentValue + 1}, SetOptions(merge: true));
+    onUpdate(); 
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Nâng cấp thành công! 🥳"), backgroundColor: Colors.green));
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
     return Scaffold(
-      appBar: AppBar(title: Text('CỬA HÀNG (💰 $coins \$)'), backgroundColor: Colors.blueAccent, leading: IconButton(icon: const Icon(Icons.arrow_back_ios_new), onPressed: () => Navigator.pop(context))),
-      body: ListView(padding: const EdgeInsets.all(20), children: [
-        _shopCard(context, '📦 Thêm Bàn Chuẩn Bị', 'Phục vụ nhiều khách cùng lúc.', stations, 4, 1000, () => _buy(context, 'stations', 1000, stations, 4)),
-        _shopCard(context, '🔥 Bếp Lò Siêu Tốc', 'Giúp thức ăn chín nhanh hơn.', cookSpeedLevel, 5, 1100, () => _buy(context, 'cookSpeedLevel', 1100, cookSpeedLevel, 5)),
-        _shopCard(context, '🍳 Chảo Chống Dính', 'Kéo dài thời gian trước khi đồ ăn bị cháy.', burnLevel, 5, 800, () => _buy(context, 'burnLevel', 800, burnLevel, 5)),
-        _shopCard(context, '❤️ Tăng Tim Tối Đa', 'Tăng số lần được phép mắc lỗi.', maxHearts, 6, 1500, () => _buy(context, 'maxHearts', 1500, maxHearts, 6)),
-        _shopCard(context, '🛒 Thực Đơn Phong Phú', 'Mở khóa gà, tôm, sữa, trái cây...', unlockedIngredients, 4, 1200, () => _buy(context, 'unlockedIngredients', 1200, unlockedIngredients, 4)),
-      ]),
+      appBar: AppBar(title: const Text('CỬA HÀNG'), backgroundColor: Colors.blueAccent, leading: IconButton(icon: const Icon(Icons.arrow_back_ios_new), onPressed: () => Navigator.pop(context))),
+      body: StreamBuilder<DocumentSnapshot>(
+        stream: FirebaseFirestore.instance.collection('users').doc(uid).snapshots(),
+        builder: (ctx, snap) {
+          if (!snap.hasData) return const Center(child: CircularProgressIndicator());
+          var data = snap.data!.data() as Map<String, dynamic>? ?? {};
+
+          int cCoins = data['coins'] ?? coins;
+          int cStations = data['stations'] ?? stations;
+          int cCookSpeed = data['cookSpeedLevel'] ?? cookSpeedLevel;
+          int cBurnLevel = data['burnLevel'] ?? burnLevel;
+          int cMaxHearts = data['maxHearts'] ?? maxHearts;
+          int cUnlockedIng = data['unlockedIngredients'] ?? unlockedIngredients;
+
+          return ListView(
+            padding: const EdgeInsets.all(20), 
+            children: [
+              Text("💰 $cCoins \$", style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.orange), textAlign: TextAlign.center),
+              const SizedBox(height: 20),
+              // 🌟 Nâng tối đa số lượng Bàn chuẩn bị lên 6 bếp
+              _shopCard(context, '📦 Thêm Bàn Chuẩn Bị', 'Phục vụ nhiều khách cùng lúc.', cStations, 6, 1000, () => _buy(context, 'stations', 1000, cStations, 6, cCoins)),
+              _shopCard(context, '🔥 Bếp Lò Siêu Tốc', 'Giúp thức ăn chín nhanh hơn.', cCookSpeed, 5, 1100, () => _buy(context, 'cookSpeedLevel', 1100, cCookSpeed, 5, cCoins)),
+              _shopCard(context, '🍳 Chảo Chống Dính', 'Kéo dài thời gian trước khi đồ ăn bị cháy.', cBurnLevel, 5, 800, () => _buy(context, 'burnLevel', 800, cBurnLevel, 5, cCoins)),
+              _shopCard(context, '❤️ Tăng Tim Tối Đa', 'Tăng số lần được phép mắc lỗi.', cMaxHearts, 6, 1500, () => _buy(context, 'maxHearts', 1500, cMaxHearts, 6, cCoins)),
+              _shopCard(context, '🛒 Thực Đơn Phong Phú', 'Mở khóa gà, tôm, sữa, trái cây...', cUnlockedIng, 4, 1200, () => _buy(context, 'unlockedIngredients', 1200, cUnlockedIng, 4, cCoins)),
+            ]
+          );
+        }
+      ),
     );
   }
 
@@ -366,9 +436,7 @@ class ShopScreen extends StatelessWidget {
       ),
     );
   }
-}
-
-// --- BẢNG XẾP HẠNG ---
+}// --- BẢNG XẾP HẠNG ---
 class LeaderboardScreen extends StatelessWidget {
   const LeaderboardScreen({super.key});
   @override
