@@ -211,12 +211,39 @@ class _GameScreenState extends State<GameScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Nhận diện màn hình đang dọc hay ngang
+    bool isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
     double screenWidth = MediaQuery.of(context).size.width;
+    double screenHeight = MediaQuery.of(context).size.height;
     String scoreDisplay = widget.isEndless ? "ĐIỂM: $score" : "ĐIỂM: $score / $targetScore";
 
-    double availableWidth = screenWidth - 20; 
-    double calculatedWidth = (availableWidth / petSlots) - 8; 
-    double clientWidth = calculatedWidth.clamp(60.0, 130.0); 
+    // Tính toán độ rộng khách hàng: Xoay ngang thì khoảng cách giữa các khách giãn ra thoải mái hơn
+    double horizontalPadding = petSlots > 6 ? (isLandscape ? 4.0 : 1.5) : 6.0; 
+    double clientWidth = (screenWidth - 20) / petSlots - (horizontalPadding * 2);
+    clientWidth = clientWidth.clamp(40.0, isLandscape ? 120.0 : 110.0); 
+    
+    // Kích thước thùng rác & bình chữa cháy nhỏ lại một chút khi xoay ngang
+    double utilSize = (screenHeight * (isLandscape ? 0.2 : 0.15)).clamp(40.0, 60.0);
+
+    // Widget Thùng rác
+    Widget trashWidget = DragTarget<PetItem>(
+      onAccept: (item) { HapticFeedback.mediumImpact(); }, 
+      builder: (ctx, _, __) => Container(
+        width: utilSize, height: utilSize, margin: const EdgeInsets.symmetric(horizontal: 10),
+        decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(30), border: Border.all(color: Colors.grey.withOpacity(0.8), width: 2), boxShadow: const [BoxShadow(color: Colors.black54, blurRadius: 8, offset: Offset(0, 4))]),
+        child: Center(child: Text('🗑️', textAlign: TextAlign.center, style: TextStyle(fontSize: utilSize * 0.45))),
+      ),
+    );
+
+    // Widget Bình cứu hỏa
+    Widget extinguisherWidget = Draggable<String>(
+      data: 'extinguisher', feedback: const Material(color: Colors.transparent, child: Text('🧯', style: TextStyle(fontSize: 60))),
+      child: Container(
+        width: utilSize, height: utilSize, margin: const EdgeInsets.symmetric(horizontal: 10),
+        decoration: BoxDecoration(color: Colors.redAccent, borderRadius: BorderRadius.circular(30), border: Border.all(color: Colors.white, width: 2), boxShadow: const [BoxShadow(color: Colors.red, blurRadius: 8, offset: Offset(0, 4))]),
+        child: Center(child: Text('🧯', textAlign: TextAlign.center, style: TextStyle(fontSize: utilSize * 0.45))),
+      ),
+    );
 
     return WillPopScope(
       onWillPop: () async { _togglePause(); return false; },
@@ -231,157 +258,135 @@ class _GameScreenState extends State<GameScreen> {
           decoration: const BoxDecoration(gradient: RadialGradient(colors: [Color(0xFF4A2F1D), Color(0xFF140D07)], radius: 1.2, center: Alignment.center)),
           child: SafeArea(
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.center, 
               children: [
                 if (comboTimeLeft > 0 || comboCount > 1) 
                   Container(
-                    width: double.infinity, color: Colors.black45, padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 20),
+                    width: double.infinity, color: Colors.black45, padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 20),
                     child: Row(
                       children: [
-                        Text('🔥 COMBO x$comboCount', style: TextStyle(color: comboCount >= 3 ? Colors.redAccent : Colors.orangeAccent, fontWeight: FontWeight.bold, fontSize: 18)),
+                        Text('🔥 COMBO x$comboCount', style: TextStyle(color: comboCount >= 3 ? Colors.redAccent : Colors.orangeAccent, fontWeight: FontWeight.bold, fontSize: isLandscape ? 14 : 18)),
                         const SizedBox(width: 15),
-                        Expanded(child: LinearProgressIndicator(value: comboTimeLeft, backgroundColor: Colors.grey[800], color: comboCount >= 3 ? Colors.redAccent : Colors.orangeAccent, minHeight: 10, borderRadius: BorderRadius.circular(5))),
+                        Expanded(child: LinearProgressIndicator(value: comboTimeLeft, backgroundColor: Colors.grey[800], color: comboCount >= 3 ? Colors.redAccent : Colors.orangeAccent, minHeight: 8, borderRadius: BorderRadius.circular(5))),
                       ],
                     ),
                   ),
 
-                const SizedBox(height: 10),
-                
-                SizedBox(
-                  height: 140, width: screenWidth,
+                // KHU VỰC KHÁCH HÀNG - Dùng Expanded để tự động chiếm không gian
+                Expanded(
+                  flex: isLandscape ? 4 : 3,
                   child: Center(
-                    child: SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 10),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center, 
-                          children: List.generate(petSlots, (i) => Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 4), 
-                            child: _buildPetClient(i, clientWidth)
-                          ))
-                        ),
-                      ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center, 
+                      children: List.generate(petSlots, (i) => _buildPetClient(i, clientWidth, horizontalPadding))
                     ),
                   ),
                 ),
                 
-                const SizedBox(height: 20), 
-                
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    DragTarget<PetItem>(
-                      onAccept: (item) { HapticFeedback.mediumImpact(); }, 
-                      builder: (ctx, _, __) => Container(
-                        width: 60, height: 60, margin: const EdgeInsets.symmetric(horizontal: 15),
-                        decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(30), border: Border.all(color: Colors.grey.withOpacity(0.8), width: 2), boxShadow: const [BoxShadow(color: Colors.black54, blurRadius: 8, offset: Offset(0, 4))]),
-                        child: const Center(child: Text('🗑️', textAlign: TextAlign.center, style: TextStyle(fontSize: 24))),
+                // KHU VỰC BẾP + ĐỒ DÙNG
+                Expanded(
+                  flex: isLandscape ? 4 : 3,
+                  child: isLandscape 
+                    ? Row( // Khi xoay ngang: Đặt chung Bếp và Đồ dùng trên 1 dòng
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Column(mainAxisAlignment: MainAxisAlignment.center, children: [trashWidget, const SizedBox(height: 10), extinguisherWidget]),
+                          const SizedBox(width: 20),
+                          ...List.generate(widget.stations, (i) => Padding(padding: const EdgeInsets.symmetric(horizontal: 4.0), child: _buildPrepStation(i, screenWidth))),
+                        ],
+                      )
+                    : Column( // Khi để dọc: Để 2 hàng riêng biệt như cũ
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Row(mainAxisAlignment: MainAxisAlignment.center, children: [trashWidget, extinguisherWidget]),
+                          const SizedBox(height: 15),
+                          Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: List.generate(widget.stations, (i) => Padding(padding: const EdgeInsets.symmetric(horizontal: 4.0), child: _buildPrepStation(i, screenWidth)))),
+                        ],
                       ),
-                    ),
-                    Draggable<String>(
-                      data: 'extinguisher', feedback: const Material(color: Colors.transparent, child: Text('🧯', style: TextStyle(fontSize: 60))),
-                      child: Container(
-                        width: 60, height: 60, margin: const EdgeInsets.symmetric(horizontal: 15),
-                        decoration: BoxDecoration(color: Colors.redAccent, borderRadius: BorderRadius.circular(30), border: Border.all(color: Colors.white, width: 2), boxShadow: const [BoxShadow(color: Colors.red, blurRadius: 8, offset: Offset(0, 4))]),
-                        child: const Center(child: Text('🧯', textAlign: TextAlign.center, style: TextStyle(fontSize: 24))),
-                      ),
-                    ),
-                  ],
                 ),
                 
-                const SizedBox(height: 20), 
-                // Sử dụng SingleChildScrollView để bọc các bếp nấu, tránh lỗi tràn khi số lượng bếp quá nhiều (ví dụ 4-5 bếp trên đt bé)
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly, 
-                    children: List.generate(widget.stations, (i) => Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                      child: _buildPrepStation(i, screenWidth),
-                    ))
-                  ),
-                ),
-                const Spacer(), 
-                
+                // KHU VỰC MENU ĐỒ ĂN BÊN DƯỚI
                 Container(
-                  width: double.infinity, padding: const EdgeInsets.symmetric(vertical: 20), 
-                  decoration: const BoxDecoration(color: Color(0xFF1A1A1A), borderRadius: BorderRadius.vertical(top: Radius.circular(30)), border: Border(top: BorderSide(color: Colors.amber, width: 3)), boxShadow: [BoxShadow(color: Colors.black, blurRadius: 15, offset: Offset(0, -5))]),
+                  width: double.infinity, 
+                  padding: EdgeInsets.symmetric(vertical: (screenHeight * (isLandscape ? 0.02 : 0.03)).clamp(5.0, 15.0)), 
+                  decoration: const BoxDecoration(color: Color(0xFF1A1A1A), borderRadius: BorderRadius.vertical(top: Radius.circular(20)), border: Border(top: BorderSide(color: Colors.amber, width: 3)), boxShadow: [BoxShadow(color: Colors.black, blurRadius: 15, offset: Offset(0, -5))]),
                   child: SingleChildScrollView(
                     scrollDirection: Axis.horizontal, physics: const BouncingScrollPhysics(),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center, 
                       children: activeMenu.map((m) => Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 15),
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
                         child: Draggable<String>(
                           data: m, 
                           feedback: Material(color: Colors.transparent, child: Text(m, style: const TextStyle(fontSize: 60))), 
-                          child: Text(m, style: const TextStyle(fontSize: 45))
+                          child: Text(m, style: TextStyle(fontSize: (screenHeight * (isLandscape ? 0.15 : 0.1)).clamp(30.0, 45.0)))
                         ),
                       )).toList()
                     ),
                   ),
                 ),
-              ]),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
-  
-  Widget _buildPetClient(int i, double clientWidth) {
+
+  Widget _buildPetClient(int i, double clientWidth, double padding) {
     var pet = pets[i];
     var currentScores = floatingScores.where((fs) => fs.petIndex == i).toList();
 
-    return DragTarget<PetItem>(
-      onAccept: (item) { 
-        if (pet != null) {
-          if (item.name == pet.itemWanted && item.progress >= 0.8 && !item.isRuined) { 
-            setState(() { 
-              int multiplier = pet.isVip ? 3 : 1; int earnedMoney = (50 * multiplier) * comboCount; score += earnedMoney; localServes++;
-              floatingScores.add(FloatingScore(i, 0.0, 1.0, '+$earnedMoney\$', pet.isVip ? Colors.amber : (comboCount >= 3 ? Colors.redAccent : Colors.greenAccent)));
-              if (comboCount < 5) comboCount++; comboTimeLeft = 1.0; pets[i] = null; 
-            }); 
-            _play('kaching.mp3'); 
-          } else { setState(() { hearts--; _play('ohno.mp3'); }); HapticFeedback.heavyImpact(); }
-        }
-      }, 
-      builder: (ctx, _, __) => SizedBox(
-        width: clientWidth,
-        child: Stack(
-          clipBehavior: Clip.none,
-          alignment: Alignment.center,
-          children: [
-            Container(
-              decoration: BoxDecoration(color: pet != null && pet.isVip ? const Color(0xFFFFF8E1) : const Color(0xFFFDF5E6), borderRadius: BorderRadius.circular(15), border: Border.all(color: pet != null && pet.isVip ? Colors.redAccent : Colors.amber, width: pet != null && pet.isVip ? 4 : 3), boxShadow: pet != null && pet.isVip ? [const BoxShadow(color: Colors.amber, blurRadius: 15, spreadRadius: 2)] : [const BoxShadow(color: Colors.black45, blurRadius: 8, offset: Offset(2, 4))]),
-              child: pet == null 
-                ? Center(child: Text('Trống', style: TextStyle(color: Colors.grey, fontSize: (clientWidth * 0.2).clamp(10.0, 14.0), fontStyle: FontStyle.italic))) 
-                : Stack( 
-                    clipBehavior: Clip.none,
-                    children: [
-                      Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                        Image.asset(pet.avatarAssetPath, height: (clientWidth * 0.45).clamp(30.0, 55.0), fit: BoxFit.contain, errorBuilder: (context, error, stackTrace) => Icon(Icons.image_not_supported, color: Colors.red, size: (clientWidth * 0.4).clamp(25.0, 40.0))),
-                        Text(pet.itemWanted, style: TextStyle(fontSize: (clientWidth * 0.3).clamp(16.0, 28.0))),
-                        Padding(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2), child: LinearProgressIndicator(value: pet.patience, backgroundColor: Colors.grey[300], color: pet.isVip ? Colors.purpleAccent : (pet.patience > 0.3 ? Colors.green : Colors.red))),
-                      ]),
-                      if (pet.isVip) Positioned(top: -10, left: -10, child: Text('👑', style: TextStyle(fontSize: (clientWidth * 0.25).clamp(16.0, 24.0))))
-                    ],
-                  ),
-            ),
-            ...currentScores.map((fs) => Positioned(
-              bottom: 50 + fs.yOffset, 
-              child: Opacity(
-                opacity: fs.opacity.clamp(0.0, 1.0),
-                child: Text(fs.text, style: TextStyle(fontSize: (clientWidth * 0.3).clamp(18.0, 26.0), fontWeight: FontWeight.w900, color: fs.color, shadows: const [Shadow(color: Colors.black, blurRadius: 4, offset: Offset(2, 2)), Shadow(color: Colors.white, blurRadius: 10, offset: Offset(0, 0))])),
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: padding),
+      child: DragTarget<PetItem>(
+        onAccept: (item) { 
+          if (pet != null) {
+            if (item.name == pet.itemWanted && item.progress >= 0.8 && !item.isRuined) { 
+              setState(() { 
+                int multiplier = pet.isVip ? 3 : 1; int earnedMoney = (50 * multiplier) * comboCount; score += earnedMoney; localServes++;
+                floatingScores.add(FloatingScore(i, 0.0, 1.0, '+$earnedMoney\$', pet.isVip ? Colors.amber : (comboCount >= 3 ? Colors.redAccent : Colors.greenAccent)));
+                if (comboCount < 5) comboCount++; comboTimeLeft = 1.0; pets[i] = null; 
+              }); 
+              _play('kaching.mp3'); 
+            } else { setState(() { hearts--; _play('ohno.mp3'); }); HapticFeedback.heavyImpact(); }
+          }
+        }, 
+        builder: (ctx, _, __) => SizedBox(
+          width: clientWidth,
+          child: Stack(
+            clipBehavior: Clip.none,
+            alignment: Alignment.center,
+            children: [
+              Container(
+                decoration: BoxDecoration(color: pet != null && pet.isVip ? const Color(0xFFFFF8E1) : const Color(0xFFFDF5E6), borderRadius: BorderRadius.circular(10), border: Border.all(color: pet != null && pet.isVip ? Colors.redAccent : Colors.amber, width: pet != null && pet.isVip ? 3 : 2), boxShadow: pet != null && pet.isVip ? [const BoxShadow(color: Colors.amber, blurRadius: 10, spreadRadius: 1)] : [const BoxShadow(color: Colors.black45, blurRadius: 6, offset: Offset(1, 3))]),
+                child: pet == null 
+                  ? Center(child: Text('Đợi', style: TextStyle(color: Colors.grey, fontSize: (clientWidth * 0.25).clamp(10.0, 14.0), fontStyle: FontStyle.italic))) 
+                  : Stack( 
+                      clipBehavior: Clip.none,
+                      children: [
+                        Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                          Image.asset(pet.avatarAssetPath, height: (clientWidth * 0.5).clamp(25.0, 50.0), fit: BoxFit.contain, errorBuilder: (context, error, stackTrace) => Icon(Icons.image_not_supported, color: Colors.red, size: (clientWidth * 0.4).clamp(20.0, 40.0))),
+                          Text(pet.itemWanted, style: TextStyle(fontSize: (clientWidth * 0.4).clamp(18.0, 30.0))),
+                          Padding(padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 4), child: SizedBox(height: 4, child: LinearProgressIndicator(value: pet.patience, backgroundColor: Colors.grey[300], color: pet.isVip ? Colors.purpleAccent : (pet.patience > 0.3 ? Colors.green : Colors.red)))),
+                        ]),
+                        if (pet.isVip) Positioned(top: -10, left: -10, child: Text('👑', style: TextStyle(fontSize: (clientWidth * 0.35).clamp(16.0, 24.0))))
+                      ],
+                    ),
               ),
-            )).toList(),
-          ],
+              ...currentScores.map((fs) => Positioned(
+                bottom: 40 + fs.yOffset, 
+                child: Opacity(
+                  opacity: fs.opacity.clamp(0.0, 1.0),
+                  child: Text(fs.text, style: TextStyle(fontSize: (clientWidth * 0.35).clamp(16.0, 24.0), fontWeight: FontWeight.w900, color: fs.color, shadows: const [Shadow(color: Colors.black, blurRadius: 3, offset: Offset(1, 1)), Shadow(color: Colors.white, blurRadius: 5, offset: Offset(0, 0))])),
+                ),
+              )).toList(),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  // Thuật toán co giãn tự động cho kích thước Bếp nấu
   Widget _buildPrepStation(int i, double screenWidth) {
     var item = prepStations[i];
     double burnThreshold = 1.6 + (widget.burnLevel * 0.3); 
@@ -389,9 +394,16 @@ class _GameScreenState extends State<GameScreen> {
     bool isReady = item != null && item.progress >= 0.8 && !item.isRuined;
     bool isFire = item != null && item.isOnFire; 
     
-    // Tự động tính toán kích thước bếp dựa trên chiều rộng màn hình và số lượng bếp
-    double size = (screenWidth / widget.stations) - 16; 
-    size = size.clamp(70.0, 110.0); // Không cho bếp nhỏ quá 70px hoặc to quá 110px
+    bool isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+    
+    // Tự động tính kích thước bếp
+    double size;
+    if (isLandscape) {
+       size = (screenWidth * 0.7 / widget.stations) - 12; // Chiếm 70% bề ngang vì còn thùng rác
+    } else {
+       size = (screenWidth / widget.stations) - 12; 
+    }
+    size = size.clamp(60.0, 100.0); 
 
     int secondsLeft = 0;
     if (item != null && !item.isRuined) { secondsLeft = ((burnThreshold - item.progress) / (currentCookSpeed * 10)).ceil(); }
@@ -403,11 +415,11 @@ class _GameScreenState extends State<GameScreen> {
           onAccept: (data) { if (data == 'extinguisher') { setState(() { prepStations[i] = null; localFires++; }); HapticFeedback.mediumImpact(); } },
           builder: (ctx, _, __) => Container(
             width: size, height: size,
-            decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.redAccent, border: Border.all(color: Colors.yellowAccent, width: 4), boxShadow: [const BoxShadow(color: Colors.red, blurRadius: 15, spreadRadius: 5)]),
+            decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.redAccent, border: Border.all(color: Colors.yellowAccent, width: 3), boxShadow: [const BoxShadow(color: Colors.red, blurRadius: 10, spreadRadius: 3)]),
             child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-              Text('🔥', style: TextStyle(fontSize: size * 0.35)),
-              const Text('KÉO 🧯 VÀO\nHOẶC NHẤN', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 9, color: Colors.white)),
-              SizedBox(width: size - 30, child: LinearProgressIndicator(value: 1.0 - ((item.ruinedTicks - 40) / 40.0).clamp(0, 1), backgroundColor: Colors.red[900], color: Colors.yellow))
+              Text('🔥', style: TextStyle(fontSize: size * 0.4)),
+              Text('KÉO 🧯', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.bold, fontSize: size * 0.12, color: Colors.white)),
+              SizedBox(width: size * 0.6, child: LinearProgressIndicator(value: 1.0 - ((item.ruinedTicks - 40) / 40.0).clamp(0, 1), backgroundColor: Colors.red[900], color: Colors.yellow))
             ]),
           ),
         ),
@@ -418,22 +430,22 @@ class _GameScreenState extends State<GameScreen> {
       onAccept: (m) { if (m == 'extinguisher') return; setState(() => prepStations[i] = PetItem(m)); },
       builder: (ctx, _, __) => Container(
         width: size, height: size, 
-        decoration: BoxDecoration(shape: BoxShape.circle, color: const Color(0xFFEEEEEE), border: Border.all(color: item != null && item.isRuined ? Colors.red : Colors.amber, width: 4), boxShadow: isReady ? [BoxShadow(color: secondsLeft <= 3 ? Colors.redAccent : Colors.amber, blurRadius: 20, spreadRadius: 2)] : [const BoxShadow(color: Colors.black54, blurRadius: 8, offset: Offset(0, 5))]),
+        decoration: BoxDecoration(shape: BoxShape.circle, color: const Color(0xFFEEEEEE), border: Border.all(color: item != null && item.isRuined ? Colors.red : Colors.amber, width: 3), boxShadow: isReady ? [BoxShadow(color: secondsLeft <= 3 ? Colors.redAccent : Colors.amber, blurRadius: 15, spreadRadius: 1)] : [const BoxShadow(color: Colors.black54, blurRadius: 5, offset: Offset(0, 3))]),
         child: item == null 
-          ? Center(child: Text('BẾP\nTRỐNG', textAlign: TextAlign.center, style: TextStyle(fontSize: size * 0.12, fontWeight: FontWeight.bold, color: Colors.grey))) 
+          ? Center(child: Text('TRỐNG', textAlign: TextAlign.center, style: TextStyle(fontSize: size * 0.15, fontWeight: FontWeight.bold, color: Colors.grey))) 
           : Draggable<PetItem>(
               data: item, onDragCompleted: () => setState(() => prepStations[i] = null),
               feedback: Material(color: Colors.transparent, child: Text(item.name, style: const TextStyle(fontSize: 60))),
               child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                Text(item.name, style: TextStyle(fontSize: size * 0.35)),
+                Text(item.name, style: TextStyle(fontSize: size * 0.4)),
                 if (item.isRuined)
-                  Column(children: [const Text('💥 VỨT ĐI!', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 10, color: Colors.red)), SizedBox(width: size - 30, child: LinearProgressIndicator(value: (item.ruinedTicks / 40.0).clamp(0, 1), backgroundColor: Colors.grey[400], color: Colors.orange))])
+                  Column(children: [Text('💥 VỨT!', style: TextStyle(fontWeight: FontWeight.bold, fontSize: size * 0.12, color: Colors.red)), SizedBox(width: size * 0.6, child: LinearProgressIndicator(value: (item.ruinedTicks / 40.0).clamp(0, 1), backgroundColor: Colors.grey[400], color: Colors.orange))])
                 else if (isReady)
-                  Text('✨ CHÍN! (${secondsLeft}s)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 10, color: secondsLeft <= 3 ? Colors.red : Colors.green[800]))
+                  Text('CHÍN! ${secondsLeft}s', style: TextStyle(fontWeight: FontWeight.bold, fontSize: size * 0.12, color: secondsLeft <= 3 ? Colors.red : Colors.green[800]))
                 else
-                  const Text('♨️ ĐANG NẤU...', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 10, color: Colors.black54)),
+                  Text('NẤU...', style: TextStyle(fontWeight: FontWeight.bold, fontSize: size * 0.12, color: Colors.black54)),
                 
-                if (!item.isRuined) SizedBox(width: size - 30, child: LinearProgressIndicator(value: item.progress.clamp(0, 1), backgroundColor: Colors.grey[400], color: isReady && secondsLeft <= 3 ? Colors.red : Colors.green)),
+                if (!item.isRuined) SizedBox(width: size * 0.6, child: LinearProgressIndicator(value: item.progress.clamp(0, 1), backgroundColor: Colors.grey[400], color: isReady && secondsLeft <= 3 ? Colors.red : Colors.green)),
               ]),
             ),
       ),
